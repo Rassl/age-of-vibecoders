@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<meta name="theme-color" content="#0b0d10" />
+<title>Age of Vibecoders</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>🧟</text></svg>" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; height: 100%; overflow: hidden;
+    background: #0b0d10; color: #f4f1ea;
+    font-family: "Bahnschrift", "DIN Alternate", "Oswald", system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior: none; touch-action: none; user-select: none;
+  }
+  /* The mode is designed around a tall, narrow corridor. On a wide window we
+     letterbox to a portrait stage rather than showing acres of empty desert with
+     the squad as a speck in the middle. */
+  #app { position: fixed; inset: 0; background: #0b0d10;
+         display: flex; align-items: center; justify-content: center; }
+  #stage { position: relative; overflow: hidden;
+           box-shadow: 0 0 0 1px #1c2026, 0 20px 80px rgba(0,0,0,.6); }
+  #game-canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+  #hud { position: absolute; inset: 0; pointer-events: none; z-index: 10; }
+  #overlay { position: absolute; inset: 0; z-index: 20; display: grid; place-items: center; }
+</style>
+</head>
+<body>
+  <div id="app">
+    <div id="stage">
+      <canvas id="game-canvas"></canvas>
+      <div id="hud"></div>
+      <div id="overlay"></div>
+    </div>
+  </div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

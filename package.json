@@ -1,0 +1,19 @@
+{
+  "name": "age-of-vibecoders",
+  "version": "0.1.0",
+  "license": "MIT",
+  "type": "module",
+  "description": "Age of Vibecoders \u2014 a squad lane-runner shooter built in three.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "three": "^0.185.1"
+  },
+  "devDependencies": {
+    "playwright-core": "^1.62.1",
+    "vite": "^8.2.2"
+  }
+}

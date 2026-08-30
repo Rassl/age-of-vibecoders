@@ -1,0 +1,95 @@
+# CI for Age of Vibecoders.
+#
+# Two questions, both answerable without a browser:
+#   1. Does the production build still build?
+#   2. Is the architecture firewall still intact -- does src/sim still import no
+#      three.js and subscribe to no bus topic?
+#
+# Deliberately absent: anything that needs a browser. tools/smoke.mjs,
+# playthrough.mjs, perf.mjs, profile.mjs and smooth.mjs drive a browser the
+# contributor already has -- playwright-core ships none, and tools/chrome.mjs
+# resolves the binary from $CHROME_PATH or the platform's usual locations. A
+# runner has none, and we do not download one.
+#
+# Also absent: any pass/fail judgement on BALANCE. tools/harness.mjs is
+# deterministic on fixed seeds, so its table is meaningful evidence -- but whether
+# 18/30 wins is better than 21/30 is a design call, not a build call. The table is
+# printed in the log and uploaded as an artifact for the reviewer; see the balance
+# rule in CONTRIBUTING.md.
+
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-sim:
+    name: build + firewall + balance harness
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          # Resolves to the latest 20.x. Vite 8 declares engines
+          # "^20.19.0 || >=22.12.0", so anything below 20.19 will refuse to run.
+          node-version: '20'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Production build
+        run: |
+          npm run build
+          test -f dist/index.html
+
+      # Must run from the repo root: harness.mjs resolves 'src/sim' relative to the
+      # current working directory. It exits 1 on a FIREWALL or BUS violation, and
+      # throws (also non-zero) on a non-finite config value, so the exit code is a
+      # real gate on its own.
+      - name: Harness -- firewall, config, balance
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tools/harness.mjs 2>&1 | tee "$RUNNER_TEMP/harness.txt"
+
+      # Belt and braces. The exit code above already fails the job today; this pins
+      # the guarantee to the printed assertion, so the firewall check can never be
+      # softened into a warning nobody reads without CI going red.
+      - name: Gate on the firewall assertion
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! grep -q '^firewall: OK' "$RUNNER_TEMP/harness.txt"; then
+            echo "::error::tools/harness.mjs did not print 'firewall: OK'."
+            echo "src/sim must import no three.js and subscribe to no bus topic."
+            echo "See CONTRIBUTING.md section 3.1."
+            exit 1
+          fi
+          grep -q '^config: OK' "$RUNNER_TEMP/harness.txt" || {
+            echo "::error::tools/harness.mjs did not print 'config: OK'."
+            exit 1
+          }
+
+      # So a reviewer can diff a PR's balance table against the base branch's
+      # without re-running anything locally.
+      - name: Upload harness output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: harness-${{ github.sha }}
+          path: ${{ runner.temp }}/harness.txt
+          if-no-files-found: warn
+          retention-days: 14

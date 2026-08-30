@@ -34,6 +34,10 @@ jobs:
   build-and-sim:
     name: build + firewall + balance harness
     runs-on: ubuntu-latest
+    # The whole job is a 130ms build plus a ~1s harness. Anything approaching this
+    # is a hang, and on a public repo a hung fork PR would otherwise sit on a
+    # runner for six hours.
+    timeout-minutes: 15
 
     steps:
       - name: Checkout

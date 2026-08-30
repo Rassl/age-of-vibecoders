@@ -43,9 +43,9 @@ Runtime dependencies are exactly one: `three`. Adding a second is a discussion, 
 | `node tools/harness.mjs` | **firewall check + config validation + balance table** | no |
 | `node tools/sweep.mjs` | parameter sweep, prints the skill gradient | no |
 | `node tools/sweep.mjs '[{"threat.betaBase":0.12}]'` | sweep any `CFG` path | no |
-| `node tools/smoke.mjs 20` | boots the real game, console errors + screenshots | **yes** |
-| `node tools/playthrough.mjs` | autopilots a full run, screenshots each act | **yes** |
-| `node tools/perf.mjs` / `profile.mjs` / `smooth.mjs` | frame-time instrumentation | **yes** |
+| `node tools/smoke.mjs 20` | loads the real game, console errors + screenshots | **yes**, + a server |
+| `node tools/playthrough.mjs` | autopilots a full run, screenshots each act | **yes**, + a server |
+| `node tools/perf.mjs` / `profile.mjs` / `smooth.mjs` | frame-time instrumentation | **yes**, + a server |
 
 > **Run the harness from the repo root.** It resolves `src/sim` relative to the current
 > working directory, so `cd tools && node harness.mjs` fails with `ENOENT`, not with a
@@ -55,9 +55,20 @@ The five browser tools drive **a browser you already have**: `playwright-core` s
 and `tools/chrome.mjs` resolves the binary — `$CHROME_PATH` wins if set, otherwise the
 usual install locations for your platform.
 
+They also **attach to a server you have already started — none of them starts one.** All
+five load `http://localhost:5180/`, and `npm run dev` defaults to 5173, so give it the
+port:
+
 ```bash
-CHROME_PATH=/path/to/chrome node tools/smoke.mjs 20
+npx vite --port 5180                                  # terminal 1
+node tools/smoke.mjs 20                               # terminal 2
+CHROME_PATH=/path/to/chrome node tools/smoke.mjs 20   # if Chrome is somewhere unusual
+GAME_URL=http://localhost:5173/ node tools/playthrough.mjs
 ```
+
+`GAME_URL` is read by `smoke.mjs` and `playthrough.mjs` only — `perf`, `profile` and
+`smooth` hard-code 5180. All five also still pass `--use-angle=metal`, a macOS-only ANGLE
+backend; if one fails to get a GPU context on Linux, that flag is the first thing to drop.
 
 They are deliberately local-only and **never run in CI** — there is no browser on the
 runner and we do not download one.
@@ -73,14 +84,16 @@ call `bus.on(...)`.
 
 **Why.** Because the sim has no renderer, it runs headless — which is the entire reason
 *"is this a sim bug or a render bug?"* is an answerable question instead of an afternoon.
-It is also what lets `tools/harness.mjs` play thousands of real runs in a second.
+It is also what lets `tools/harness.mjs` play ninety-one full runs — six skill levels ×
+five seeds, three times over, plus one traced run — in about a second.
 
 **Why the bus is one-directional.** Sim **emits facts**; presentation **listens**. The
 bus drains once per frame in the view layer, so a subscriber registered from `sim/` would
 make sim→sim causality implicit *and* frame-delayed. Sim→sim causality is a direct
-function call. `src/reactions.js` is the **only** place a sim event becomes presentation —
-that is what keeps "what happens when a barrel dies" readable in one file instead of
-scattered across nine systems.
+function call. `src/reactions.js` is where a sim event becomes presentation — the
+only other `bus.on` in the whole tree is a single `RUN_OVER` handler in `src/main.js` that
+sequences the end card. That is what keeps "what happens when a barrel dies" readable in
+one file instead of scattered across nine systems.
 
 **How to check.**
 
@@ -131,10 +144,11 @@ a refactor.** A PR that touches the array must:
 
 "I moved it up so the lint/order/import graph is tidier" is a rejection.
 
-`SYSTEMS` is also the debugging tool: `disabled` is a `Set` of system names the debug
-overlay can toggle, which bisects a gameplay bug by name in about thirty seconds. Keep
-names short, stable and unique — renaming one is a (small) breaking change to that
-workflow.
+`SYSTEMS` is also the debugging tool: `runStep` skips any system whose name is in the
+exported `disabled` `Set`, so a gameplay bug is bisected by name instead of by commenting
+out code. Nothing toggles it for you yet — there is no debug overlay, and the DEV-only
+`window.__game` does not expose the Set — so today it costs one temporary line. Keep names
+short, stable and unique anyway: they are the handles that workflow uses.
 
 ### 3.3 Read `CFG` at the use site — never destructure at module load
 
@@ -142,7 +156,7 @@ workflow.
 // NO -- frozen at import time
 import { CFG } from '../config.js'
 const { anchorTau } = CFG.squad
-const SPACING = CFG.squad.spacing
+const SPACING = CFG.formation.spacingBase
 
 // YES -- read where it is used
 function steer(w, dt) {
@@ -161,7 +175,7 @@ A local alias **inside a function body**, re-read on every call, is fine. Captur
 module scope is what is banned. `FIXED_DT` is a genuine compile-time constant and is
 imported directly; that is the only exception.
 
-Self-check — look for `= CFG` or `} = CFG` at the top level of a file:
+Self-check — every top-level line under `src/` that reads `CFG`:
 
 ```bash
 grep -rn "^\(const\|let\|var\).*CFG\." src | grep -v config.js
@@ -198,8 +212,8 @@ The structural rules that hold this up, which a PR must not quietly break:
 - **Bus payloads come from a pre-allocated ring** with a fixed monomorphic shape
   (`{ topic, x, y, z, a, b, c, kind }`). Never add a field at runtime; never emit an
   object.
-- `reset()` must be allocation-free: restart is one frame, under 5ms, and must not touch
-  the scene graph's structure.
+- `resetWorld()` (`src/sim/world.js`) must be allocation-free: restart is one frame,
+  under 5ms, and must not touch the scene graph's structure.
 
 ### 3.5 No runtime `fillText`
 
@@ -226,8 +240,10 @@ grep -rn "fillText" src
 # src/view/characters.js:627 -- comment
 ```
 
-The HUD (`src/ui/hud.js`, `src/ui/overlay.js`) is DOM and is the only DOM in the project.
-Text there is free; text in the world is not.
+The HUD (`src/ui/hud.js`, `src/ui/overlay.js`) is the only DOM *interface* in the project:
+everywhere else `document` appears, it is `main.js` grabbing its four root elements or a
+procedural canvas texture baked once at boot. Text in the HUD is free; text in the world
+is not.
 
 ### 3.6 Refused APIs
 
@@ -352,9 +368,11 @@ node tools/sweep.mjs '[{"threat.betaBase":0.12},{"threat.betaBase":0.16}]'
 
 **Be honest about the instrument.** With five enemy kinds — including a ranged spitter and
 an exploding bloater — the scripted bot in `tools/bot.mjs` is no longer a great proxy for
-a human: it does not forecast acid, does not respect blast radii, and its target valuation
-is myopic. The reported gradient is consequently flatter and noisier than it should be.
-So: treat a single row swinging by one win as noise, look at the **total and the shape**,
+a human: it dodges acid only once the glob is airborne, never during the spitter's windup,
+which is the telegraph a human actually reads; it has no notion of a bloater's blast radius
+at all; and its lane valuation is greedy over the props on screen right now. The reported
+gradient is consequently flatter and noisier than it should be. So: treat a single row
+swinging by one win as noise, look at the **total and the shape**,
 and do not tune to three decimal places against this bot — that is fitting noise. If you
 improve `bot.mjs`, that is a change worth making on its own, and the balance rule applies
 to it too.

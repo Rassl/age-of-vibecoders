@@ -226,9 +226,9 @@ no pass/fail judgement on balance — that table is printed and uploaded for a h
 
 Aim efficiency is the modelled skill because it is the load-bearing one: bullets go straight
 and you aim with your body, so a player who cannot hold a lane delivers a fraction of
-nominal DPS. A healthy build shows a
-*monotone* gradient — wins and peak squad size falling as aim gets worse. **The current one
-does not** (EXPERT 2/5, CLUMSY 5/5); see the open work below.
+nominal DPS. A healthy build shows a *monotone* gradient — wins and peak squad size falling
+as aim gets worse. **The current one does not** (EXPERT 2/5, CLUMSY 5/5); see the open work
+below.
 
 ```bash
 node tools/sweep.mjs                                 # baseline skill gradient, 6 levels x 9 seeds
@@ -236,12 +236,14 @@ node tools/sweep.mjs '[{"threat.betaBase":0.12}]'    # sweep any config path
 ```
 
 Browser checks drive a Chrome you already have — `playwright-core` ships none.
-`tools/chrome.mjs` finds the binary: `$CHROME_PATH` wins if set (`CHROME_PATH=/usr/bin/chromium
-node tools/smoke.mjs`), otherwise it tries the usual install locations for macOS, Linux and
-Windows. They expect a dev server at `http://localhost:5180`, so run `npx vite --port 5180`
-— plain `npm run dev` serves 5173 and every probe below will fail to connect:
+`tools/chrome.mjs` finds the binary: `$CHROME_PATH` wins if set, otherwise it tries the
+usual install locations for macOS, Linux and Windows. They expect a dev server at
+`http://localhost:5180`, so run `npx vite --port 5180` — plain `npm run dev` serves 5173
+and every probe below will fail to connect:
 
 ```bash
+export CHROME_PATH=/usr/bin/chromium   # only if it cannot find one itself
+
 node tools/smoke.mjs 20     # boots the real game, reports console errors + screenshots
 node tools/playthrough.mjs  # autopilots a full run to the boss, screenshots each act
 node tools/perf.mjs         # rAF cadence, render cost, substep evenness

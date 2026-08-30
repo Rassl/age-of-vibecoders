@@ -59,8 +59,8 @@ jobs:
           npm run build
           test -f dist/index.html
 
-      # Must run from the repo root: harness.mjs resolves 'src/sim' relative to the
-      # current working directory. It exits 1 on a FIREWALL or BUS violation, and
+      # harness.mjs resolves src/sim against its OWN location, so it runs from any
+      # cwd. It exits 1 on a FIREWALL or BUS violation, and
       # throws (also non-zero) on a non-finite config value, so the exit code is a
       # real gate on its own.
       - name: Harness -- firewall, config, balance

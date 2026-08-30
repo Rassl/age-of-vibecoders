@@ -10,7 +10,14 @@
  *      a fraction of nominal DPS.
  */
 import { readdirSync, readFileSync, statSync } from 'node:fs'
-import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { dirname, join, resolve } from 'node:path'
+
+// Resolve against THIS FILE, not cwd. The firewall check is the one command the
+// README tells contributors to run, and walking a cwd-relative 'src/sim' meant it
+// died with a bare ENOENT stack trace anywhere but the repo root.
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+const SIM_DIR = join(ROOT, 'src', 'sim')
 import { CFG, deriveConfig, validateConfig, FIXED_DT } from '../src/config.js'
 import { createWorld, STATE } from '../src/sim/world.js'
 import { startRun } from '../src/sim/run.js'
@@ -34,7 +41,7 @@ function walk(dir, out = []) {
 
 function assertFirewall() {
   const offenders = []
-  for (const f of walk('src/sim')) {
+  for (const f of walk(SIM_DIR)) {
     const src = readFileSync(f, 'utf8')
     if (/from\s+['"]three['"]|require\(['"]three['"]\)/.test(src)) offenders.push(f)
   }
@@ -48,7 +55,7 @@ function assertFirewall() {
   // subscriber registered from sim/ would make sim -> sim causality implicit and
   // frame-delayed, since the bus only drains once per frame in the view layer.
   const subscribers = []
-  for (const f of walk('src/sim')) {
+  for (const f of walk(SIM_DIR)) {
     if (/\bbus\.on\s*\(/.test(readFileSync(f, 'utf8'))) subscribers.push(f)
   }
   if (subscribers.length) {
@@ -58,7 +65,7 @@ function assertFirewall() {
   }
 
   console.log('firewall: OK -- src/sim imports no three.js and subscribes to no bus topic ('
-    + walk('src/sim').length + ' files)')
+    + walk(SIM_DIR).length + ' files)')
 }
 
 // ----------------------------------------------------------------- 2. balance

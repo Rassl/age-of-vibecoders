@@ -4,16 +4,16 @@
  * Run: node tools/smoke.mjs [seconds]
  */
 import { chromium } from 'playwright-core'
-import { findChrome } from './chrome.mjs'
+import { findChrome, CHROME_ARGS, shotDir } from './chrome.mjs'
 
-const SHOTS = process.env.SHOT_DIR || '/tmp/shots'
+const SHOTS = shotDir()
 const URL = process.env.GAME_URL || 'http://localhost:5180/'
 const SECONDS = Number(process.argv[2] || 12)
 
 const browser = await chromium.launch({
   executablePath: findChrome(),
   headless: true,
-  args: ['--use-gl=angle', '--use-angle=metal', '--enable-unsafe-swiftshader', '--hide-scrollbars'],
+  args: CHROME_ARGS,
 })
 const page = await browser.newPage({ viewport: { width: 430, height: 900 }, deviceScaleFactor: 2 })
 

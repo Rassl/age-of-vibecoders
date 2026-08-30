@@ -1,12 +1,12 @@
 /** Per-module frame cost. Finds which view module owns the spikes. */
 import { chromium } from 'playwright-core'
-import { findChrome } from './chrome.mjs'
+import { findChrome, CHROME_ARGS, shotDir } from './chrome.mjs'
 const b = await chromium.launch({
   executablePath: findChrome(),
-  headless: true, args: ['--hide-scrollbars', '--use-angle=metal'],
+  headless: true, args: CHROME_ARGS,
 })
 const p = await b.newPage({ viewport: { width: 430, height: 900 }, deviceScaleFactor: 2 })
-await p.goto('http://localhost:5180/', { waitUntil: 'load' })
+await p.goto(process.env.GAME_URL || 'http://localhost:5180/', { waitUntil: 'load' })
 await p.waitForTimeout(1500)
 await p.mouse.click(215, 450)
 await p.waitForTimeout(600)

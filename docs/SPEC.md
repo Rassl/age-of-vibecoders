@@ -1,4 +1,4 @@
-# Corridor Assault — Frozen Implementation Spec
+# Age of Vibecoders — Frozen Implementation Spec
 
 _Produced by an 11-agent design workflow: 4 design lenses, 3 competing architectures, 3 judges, 1 synthesis._
 

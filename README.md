@@ -7,9 +7,12 @@ A squad lane-runner shooter in three.js. You drag; the squad fires by itself; ev
 seconds the corridor offers you two rewards and enough time to shoot your way to exactly
 one of them.
 
-Built from scratch as a recreation of the corridor-assault mode from *Age of Origins*.
-No art assets: every mesh, texture, glyph and sound is generated at boot. ~13k lines of
-vanilla JS ES modules, one runtime dependency (three 0.185.1), no TypeScript.
+An independent, from-scratch implementation inspired by the squad-runner mode in
+*Age of Origins* by Camel Games. Every line of code, every mesh, texture, glyph and
+sound in this repository is original and generated procedurally at boot — there is not
+a single image, audio, font or model file in the tree, and no assets, code or data were
+extracted from any other game. ~13k lines of vanilla JS ES modules, one runtime
+dependency (three 0.185.1), no TypeScript.
 
 Needs **Node ≥ 20.19** (or ≥ 22.12) — Vite 8 declares that in `engines` and refuses
 to start on older 20.x.
@@ -323,3 +326,15 @@ Genuinely unfinished, roughly easiest first.
 Contributions are welcome — [`CONTRIBUTING.md`](CONTRIBUTING.md) has the rules in
 reviewable form. The short version: if a change touches balance, include harness output
 before and after; if it touches `src/sim`, keep the firewall green.
+
+## Trademarks and attribution
+
+Not affiliated with, endorsed by, or sponsored by Camel Games. *Age of Origins* is a
+trademark of its respective owner and is referenced here only to describe, factually,
+what genre of mode this project reimplements. This project copies none of that game's
+expression — no art, audio, code, text, character names or logos — only the shape of a
+well-known arcade format.
+
+## License
+
+MIT — see [LICENSE](LICENSE).

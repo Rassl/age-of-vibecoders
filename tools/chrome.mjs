@@ -14,6 +14,8 @@
  */
 import { existsSync } from 'node:fs'
 import { platform } from 'node:process'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 
 const CANDIDATES = {
   darwin: [
@@ -54,9 +56,19 @@ export function findChrome() {
   )
 }
 
-/** Launch args shared by every browser tool here. */
+/**
+ * Launch args shared by every browser tool here.
+ *
+ * `--use-angle=metal` selects a macOS-only ANGLE backend; passing it on Linux or
+ * Windows is at best ignored and at worst refuses to start, so it is gated.
+ */
 export const CHROME_ARGS = [
-  '--use-gl=angle',
-  '--enable-unsafe-swiftshader',
   '--hide-scrollbars',
+  '--enable-unsafe-swiftshader',
+  ...(platform === 'darwin' ? ['--use-gl=angle', '--use-angle=metal'] : ['--use-gl=angle']),
 ]
+
+/** Default screenshot directory. `/tmp` does not exist on Windows. */
+export function shotDir() {
+  return process.env.SHOT_DIR || join(tmpdir(), 'aov-shots')
+}

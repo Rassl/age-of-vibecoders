@@ -4,14 +4,14 @@
  * "juddery", which need completely different fixes.
  */
 import { chromium } from 'playwright-core'
-import { findChrome } from './chrome.mjs'
+import { findChrome, CHROME_ARGS, shotDir } from './chrome.mjs'
 const b = await chromium.launch({
   executablePath: findChrome(),
   headless: true,
-  args: ['--use-gl=angle','--use-angle=metal','--enable-unsafe-swiftshader','--hide-scrollbars'],
+  args: CHROME_ARGS,
 })
 const p = await b.newPage({ viewport: { width: 430, height: 900 }, deviceScaleFactor: 2 })
-await p.goto('http://localhost:5180/', { waitUntil: 'load' })
+await p.goto(process.env.GAME_URL || 'http://localhost:5180/', { waitUntil: 'load' })
 await p.waitForTimeout(1500)
 await p.mouse.click(215, 450)
 await p.waitForTimeout(600)

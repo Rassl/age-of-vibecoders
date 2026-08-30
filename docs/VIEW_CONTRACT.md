@@ -1,4 +1,4 @@
-# View Layer Contract — Corridor Assault
+# View Layer Contract — Age of Vibecoders
 
 three.js **0.185.1** (installed, verified). Vanilla JS ES modules, **no TypeScript**.
 Vite dev server. Portrait-first. Mouse AND touch.

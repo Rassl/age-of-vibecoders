@@ -180,6 +180,10 @@ function beforeStep() {
 }
 
 function step(dt, nSubsteps) {
+  // Mark the frame as having consumed pendingDx. render() clears the accumulator
+  // only when this is set; without it the delta is re-applied on every substep of
+  // every subsequent frame and one flick walks the squad into the rail.
+  steppedThisFrame = true
   // The drag delta is drained once per FRAME and divided EVENLY across substeps:
   // dumping it into substep 0 would let the per-substep speed cap truncate a
   // fast flick on exactly the hitching frames where control matters most. The

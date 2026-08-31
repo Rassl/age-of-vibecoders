@@ -1,3 +1,6 @@
+<img width="1122" height="1402" alt="image" src="https://github.com/user-attachments/assets/6787fc90-7409-414a-b634-e051adbcb89b" />
+
+
 # Age of Vibecoders
 
 A squad lane-runner shooter in three.js. You drag; the squad fires by itself; every few

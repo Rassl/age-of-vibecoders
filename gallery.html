@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Asset Gallery (dev)</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='13' font-size='13'>&#128126;</text></svg>" />
+  <!--
+    DEV-ONLY page. `vite build` bundles only index.html, so this never ships:
+    open http://localhost:5180/gallery.html while `npm run dev` is running.
+  -->
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; display: flex; height: 100vh; overflow: hidden;
+      background: #17130f; color: #e8ddc8;
+      font: 13px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+    #side {
+      width: 220px; flex: none; overflow-y: auto; padding: 10px 0 20px;
+      background: #100d0a; border-right: 1px solid #2c251c;
+    }
+    #side h1 { font-size: 13px; margin: 4px 12px 10px; color: #c9a86a; }
+    #side h2 {
+      font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em;
+      margin: 14px 12px 4px; color: #877a5e;
+    }
+    #side button {
+      display: block; width: 100%; text-align: left; padding: 5px 12px;
+      background: none; border: 0; color: #d8cdb4; font: inherit; cursor: pointer;
+    }
+    #side button:hover { background: #241d14; }
+    #side button.on { background: #33281a; color: #ffd98a; }
+    #stage { flex: 1; position: relative; min-width: 0; }
+    #stage canvas { display: block; }
+    #panel {
+      position: absolute; top: 10px; right: 10px; width: 210px;
+      background: rgba(16, 13, 10, 0.92); border: 1px solid #2c251c;
+      border-radius: 6px; padding: 10px 12px;
+    }
+    #panel label { display: block; margin: 7px 0 2px; color: #a89a7e; }
+    #panel input[type=range] { width: 100%; }
+    #panel .row { display: flex; gap: 8px; align-items: center; margin-top: 7px; }
+    #panel button {
+      background: #33281a; border: 1px solid #4a3b24; border-radius: 4px;
+      color: #ffd98a; font: inherit; padding: 3px 10px; cursor: pointer;
+    }
+    #stats {
+      position: absolute; left: 10px; bottom: 10px; color: #877a5e;
+      background: rgba(16, 13, 10, 0.8); padding: 4px 10px; border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <nav id="side"><h1>ASSET GALLERY</h1></nav>
+  <div id="stage">
+    <div id="panel">
+      <div class="row">
+        <button id="play">pause</button>
+        <button id="flash">flash</button>
+      </div>
+      <label>walk speed <span id="hzv"></span></label>
+      <input type="range" id="hz" min="0" max="3.5" step="0.05" />
+      <label>gait <span id="gaitv"></span></label>
+      <input type="range" id="gait" min="0" max="1" step="0.01" value="1" />
+      <label>drive (attack/recoil) <span id="drivev"></span></label>
+      <input type="range" id="drive" min="0" max="1" step="0.01" value="0" />
+      <div class="row" id="bossrow" hidden>
+        <label style="margin:0"><input type="checkbox" id="rage" /> boss rage tint</label>
+      </div>
+      <div class="row" id="tierrow" hidden>
+        <label style="margin:0">gun tier</label>
+        <select id="tier"></select>
+      </div>
+      <div class="row">
+        <label style="margin:0"><input type="checkbox" id="wire" /> wireframe</label>
+        <label style="margin:0"><input type="checkbox" id="turn" /> turntable</label>
+      </div>
+    </div>
+    <div id="stats"></div>
+  </div>
+  <script type="module" src="/src/gallery/main.js"></script>
+</body>
+</html>

@@ -49,6 +49,7 @@ import {
   buildBloaterGeometry, buildBossGeometry, buildBruteGeometry, buildGunGeometries,
   buildRunnerGeometry, buildSoldierGeometry, buildSpitterGeometry, buildWalkerGeometry,
 } from './geometry.js'
+import { createBossHead } from './bosshead.js'
 
 /**
  * Set `LIMB_ANIM.enabled = false` BEFORE createCharacters() for the static
@@ -81,12 +82,12 @@ const MAX_SPRING_STEP = 0.033
 const RECOIL_GAIN = 17
 
 /** Order is the contract with KIND_AT / the crowds array, not with the sim. */
-const KINDS = ['walker', 'runner', 'brute', 'spitter', 'bloater']
+export const KINDS = ['walker', 'runner', 'brute', 'spitter', 'bloater']
 const KIND_INDEX = { walker: 0, runner: 1, brute: 2, spitter: 3, bloater: 4 }
 
 // Kinds differ in silhouette WEIGHT, never in hue: tint only nudges value so a
 // brute reads as heavier and a runner as lighter under the same fog.
-const KIND_TINT = [
+export const KIND_TINT = [
   [1.00, 1.00, 1.00],   // walker
   [1.10, 1.06, 0.90],   // runner
   [0.80, 0.86, 0.74],   // brute
@@ -123,7 +124,7 @@ const KIND_PITCH = [0.38, 0.50, 0.30, 0.30, 0.22]
  * rears back to spit, and goes NEGATIVE for the fifth of a second it is
  * whipping forward on the release.
  */
-const ANIM = {
+export const ANIM = {
   soldier: {
     legAmpL: 0.74, legAmpR: 0.74, knee: 0.85, armSwing: 0.05,
     headBob: 0.05, headOff: 0, headRear: 0,
@@ -187,6 +188,41 @@ const _kindCount = new Int32Array(5)
 const f = (x) => Number(x).toFixed(4)
 
 /**
+ * The gun's `extra` pose block: the barrel cluster spins about the bore, then
+ * takes the same kick as the receiver so it cannot separate from the gun under
+ * recoil. Exported (with enemyShaderOpts) so the dev gallery compiles the SAME
+ * pose code as the game instead of a drifting copy.
+ */
+export const GUN_SPIN_EXTRA = `    vec3 ax = vec3(${f(SOLDIER_RIG.gunX)}, ${f(SOLDIER_RIG.gunY)}, 0.0);
+    mat3 sp = rotZ(uSpin);
+    mat3 kk = rotX(FW * ${f(ANIM.soldier.gunPitch)} * d);
+    p = ax + kk * (sp * (p - ax));
+    p.z += FW * ${f(ANIM.soldier.gunKick)} * d;
+    rot = kk * sp;
+    glow = 0.0;`
+
+/** Per-kind charShader options (rim, and the bloater/spitter swell + glow). */
+export function enemyShaderOpts(kind) {
+  const rig = ENEMY_RIGS[kind]
+  const opt = { key: kind, instanced: true, face: -1, rim: true }
+  if (kind === 'bloater') {
+    // Seams swell and glow with accumulated damage: a bloater about to pop is
+    // visibly primed, which is the only way the blast can be a decision
+    // rather than an ambush.
+    opt.glow = [0.95, 0.36, 0.10]
+    opt.extra = `    vec3 cc = vec3(0.0, ${f(rig.hipY + 0.40)}, 0.0);
+    p = cc + (p - cc) * (1.0 + 0.05 * sin(ph * 2.3) + 0.22 * d);
+    glow = clamp(0.18 + 0.85 * d + (0.10 + 0.35 * d) * sin(ph * 3.1), 0.0, 1.4);`
+  } else if (kind === 'spitter') {
+    opt.glow = [0.55, 0.85, 0.20]
+    opt.extra = `    vec3 cc = vec3(0.0, ${f(rig.hipY + 0.20)}, 0.14);
+    p = cc + (p - cc) * (1.0 + 0.03 * sin(ph * 1.7) + 0.26 * max(0.0, d));
+    glow = 0.55 * max(0.0, d);`
+  }
+  return opt
+}
+
+/**
  * The character vertex/fragment injection, generated per material.
  *
  * `instanced` swaps the five per-body values between attributes and uniforms,
@@ -195,7 +231,7 @@ const f = (x) => Number(x).toFixed(4)
  * walking INTO the camera; every pitch in the pose is multiplied by it, so one
  * table of positive amplitudes describes both directions of travel.
  */
-function charShader(mat, rig, anim, opt) {
+export function charShader(mat, rig, anim, opt) {
   const decl = opt.instanced
     ? 'attribute float aPhase;\nattribute float aFlash;\nattribute float aDrive;\nattribute float aGait;\nattribute vec3 aTint;'
     : 'uniform float aPhase;\nuniform float aFlash;\nuniform float aDrive;\nuniform float aGait;\nuniform vec3 aTint;'
@@ -492,42 +528,15 @@ export function createCharacters(scene) {
   const gunMat = charShader(
     new MeshLambertMaterial({ vertexColors: true, flatShading: true, emissive: 0x0c1016 }),
     SOLDIER_RIG, ANIM.soldier,
-    {
-      key: 'gun', instanced: true, face: 1, spin: true, uniforms: spinU,
-      // The barrel cluster spins about the bore, then takes the same kick as
-      // the receiver so it cannot separate from the gun under recoil.
-      extra: `    vec3 ax = vec3(${f(SOLDIER_RIG.gunX)}, ${f(SOLDIER_RIG.gunY)}, 0.0);
-    mat3 sp = rotZ(uSpin);
-    mat3 kk = rotX(FW * ${f(ANIM.soldier.gunPitch)} * d);
-    p = ax + kk * (sp * (p - ax));
-    p.z += FW * ${f(ANIM.soldier.gunKick)} * d;
-    rot = kk * sp;
-    glow = 0.0;`,
-    },
+    { key: 'gun', instanced: true, face: 1, spin: true, uniforms: spinU, extra: GUN_SPIN_EXTRA },
   )
 
   const enemyMats = []
   for (let k = 0; k < KINDS.length; k++) {
     const kind = KINDS[k]
-    const rig = ENEMY_RIGS[kind]
-    const opt = { key: kind, instanced: true, face: -1, rim: true }
-    if (kind === 'bloater') {
-      // Seams swell and glow with accumulated damage: a bloater about to pop is
-      // visibly primed, which is the only way the blast can be a decision
-      // rather than an ambush.
-      opt.glow = [0.95, 0.36, 0.10]
-      opt.extra = `    vec3 cc = vec3(0.0, ${f(rig.hipY + 0.40)}, 0.0);
-    p = cc + (p - cc) * (1.0 + 0.05 * sin(ph * 2.3) + 0.22 * d);
-    glow = clamp(0.18 + 0.85 * d + (0.10 + 0.35 * d) * sin(ph * 3.1), 0.0, 1.4);`
-    } else if (kind === 'spitter') {
-      opt.glow = [0.55, 0.85, 0.20]
-      opt.extra = `    vec3 cc = vec3(0.0, ${f(rig.hipY + 0.20)}, 0.14);
-    p = cc + (p - cc) * (1.0 + 0.03 * sin(ph * 1.7) + 0.26 * max(0.0, d));
-    glow = 0.55 * max(0.0, d);`
-    }
     enemyMats.push(charShader(
       new MeshLambertMaterial({ vertexColors: true, flatShading: true, emissive: 0x161a12 }),
-      rig, ANIM[kind], opt,
+      ENEMY_RIGS[kind], ANIM[kind], enemyShaderOpts(kind),
     ))
   }
 
@@ -570,6 +579,16 @@ export function createCharacters(scene) {
   boss.castShadow = true
   boss.customDepthMaterial = bossMat.userData.depthMaterial
   boss.visible = false
+
+  // The loaded head replaces the procedural ball the moment it arrives; until
+  // then (or on a 404) the ball stands in, so the boss never fights headless.
+  // Parented to the boss mesh: position/scale/topple are inherited, and only
+  // the shader gait has to be mirrored (bosshead.js sync).
+  const bossHead = createBossHead(BOSS_RIG, ANIM.boss, CFG.boss.headModelUrl, () => {
+    boss.geometry.dispose()
+    boss.geometry = buildBossGeometry(false)
+  })
+  boss.add(bossHead.group)
 
   scene.add(soldiers.mesh, joiners.mesh, guns.mesh, bars.mesh, boss)
   for (let k = 0; k < crowds.length; k++) scene.add(crowds[k].mesh)
@@ -950,6 +969,9 @@ export function createCharacters(scene) {
     bossU.aDrive.value = clamp(b.stagger / CFG.boss.plateStagger, 0, 1)
     bossU.uTime.value = clock
     bossU.aTint.value.setRGB(1 + bossRage * 0.35, 1 - bossRage * 0.12, 1 - bossRage * 0.08)
+
+    bossHead.sync(bossU.aPhase.value, bossU.aGait.value, bossU.aDrive.value,
+      bossU.aFlash.value, bossU.aTint.value)
   }
 
   // ---------------------------------------------------------------- weapon --
@@ -1032,7 +1054,10 @@ export function createCharacters(scene) {
         enemyGeos[k].dispose()
         enemyMats[k].dispose()
       }
-      bossGeo.dispose()
+      // bossGeo may already have been swapped for the headless build; the mesh
+      // always holds whichever one is live.
+      boss.geometry.dispose()
+      bossHead.dispose()
       soldierMat.dispose()
       joinerMat.dispose()
       gunMat.dispose()

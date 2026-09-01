@@ -188,6 +188,9 @@ export const CFG = {
     // would punish exactly the growth the whole run is about.
     shockGap: 4.6,
     shockKills: 2,
+    // Served from public/. Relative (no leading slash) because vite base is
+    // './'. If the fetch 404s the boss keeps its procedural ball head.
+    headModelUrl: 'models/boss-head.glb',
   },
 
   camera: {

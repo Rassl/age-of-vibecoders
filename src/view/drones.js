@@ -43,15 +43,8 @@ const tint = new Color()
 /** Rotor arm offsets. A square quad reads as a drone at any silhouette size. */
 const ARMS = [[-0.42, -0.34], [0.42, -0.34], [-0.42, 0.34], [0.42, 0.34]]
 
-export function createDrones(scene) {
-  const cap = CFG.pool.drones
-  const boltCap = CFG.pool.bolts
-
-  const geos = []
-  const mats = []
-  const keep = (arr, x) => { arr.push(x); return x }
-
-  // ---- hull: one merged geometry so a drone is a single instanced draw -------
+/** One merged geometry so a drone is a single instanced draw. */
+export function buildDroneHullGeometry() {
   const parts = []
   const chassis = new BoxGeometry(0.62, 0.17, 0.50)
   parts.push(chassis)
@@ -73,8 +66,20 @@ export function createDrones(scene) {
   // Drop uv before merging: BoxGeometry and CylinderGeometry disagree on uv2
   // presence, and mergeGeometries refuses a set with mismatched attributes.
   for (const p of parts) { p.deleteAttribute('uv'); p.deleteAttribute('normal') }
-  const hullGeo = keep(geos, mergeGeometries(parts, false))
+  const g = mergeGeometries(parts, false)
   for (const p of parts) p.dispose()
+  return g
+}
+
+export function createDrones(scene) {
+  const cap = CFG.pool.drones
+  const boltCap = CFG.pool.bolts
+
+  const geos = []
+  const mats = []
+  const keep = (arr, x) => { arr.push(x); return x }
+
+  const hullGeo = keep(geos, buildDroneHullGeometry())
 
   const hullMat = keep(mats, new MeshBasicMaterial({ toneMapped: true }))
   const hull = new InstancedMesh(hullGeo, hullMat, cap)

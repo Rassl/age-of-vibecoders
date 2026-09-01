@@ -78,6 +78,13 @@ const CSS = `
 .aov-rage{position:absolute;right:10px;width:32px;height:32px;opacity:0;
   top:calc(env(safe-area-inset-top,0px) + 24px);
   transition:opacity 220ms ease;will-change:opacity;}
+.aov-snd,.aov-pause{position:absolute;right:10px;width:34px;height:34px;
+  top:calc(env(safe-area-inset-top,0px) + 66px);
+  pointer-events:auto;cursor:pointer;border:0;border-radius:50%;
+  background:rgba(11,13,16,.45);color:#EFE3C4;font-size:16px;line-height:34px;
+  padding:0;text-align:center;-webkit-tap-highlight-color:transparent;}
+.aov-snd.off{opacity:.55;}
+.aov-pause{top:calc(env(safe-area-inset-top,0px) + 108px);font-size:14px;}
 .aov-rage .t{fill:none;stroke:rgba(11,13,16,.55);stroke-width:3;}
 .aov-rage .a{fill:none;stroke:#E0C9A0;stroke-width:3;}
 .aov-rage.raging .a{stroke:#E5484D;animation:aov-blink .48s steps(2,end) infinite;}
@@ -342,5 +349,53 @@ export function createHud(root) {
     if (gate.parentNode) gate.parentNode.removeChild(gate)
   }
 
-  return { sync, pulseCount, flashDamage, reset, dispose }
+  /**
+   * Speaker toggle, below the rage ring, alive across every game state (it
+   * hangs off `root`, not the run-scoped gate). `onToggle` returns the new
+   * muted state; pointer events are stopped so a tap can never leak into the
+   * steering drag or the tap-to-start scrim.
+   */
+  function soundButton(initialMuted, onToggle) {
+    const b = document.createElement('button')
+    b.type = 'button'
+    b.className = 'aov-snd' + (initialMuted ? ' off' : '')
+    b.textContent = initialMuted ? '\u{1F507}' : '\u{1F50A}'
+    for (const ev of ['pointerdown', 'pointerup', 'touchstart', 'mousedown']) {
+      b.addEventListener(ev, (e) => e.stopPropagation())
+    }
+    b.addEventListener('click', (e) => {
+      e.stopPropagation()
+      const m = onToggle()
+      b.textContent = m ? '\u{1F507}' : '\u{1F50A}'
+      b.classList.toggle('off', m)
+      b.blur()
+    })
+    root.appendChild(b)
+    return b
+  }
+
+  /**
+   * Pause toggle, below the sound button. `onToggle` returns the new paused
+   * state; `set` lets the restart path force the icon back to running, so a
+   * retry from a paused end screen cannot leave a stale play glyph.
+   */
+  function pauseButton(onToggle) {
+    const b = document.createElement('button')
+    b.type = 'button'
+    b.className = 'aov-pause'
+    const set = (paused) => { b.textContent = paused ? '▶' : '⏸' }
+    set(false)
+    for (const ev of ['pointerdown', 'pointerup', 'touchstart', 'mousedown']) {
+      b.addEventListener(ev, (e) => e.stopPropagation())
+    }
+    b.addEventListener('click', (e) => {
+      e.stopPropagation()
+      set(onToggle())
+      b.blur()
+    })
+    root.appendChild(b)
+    return { el: b, set }
+  }
+
+  return { sync, pulseCount, flashDamage, soundButton, pauseButton, reset, dispose }
 }

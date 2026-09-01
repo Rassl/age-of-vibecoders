@@ -524,6 +524,29 @@ function buildCluster(uprights, lying, r, h, barR, barLen) {
   return bakeClusterUv(mergeParts(parts, null))
 }
 
+/** The 3.2u dodgeable cluster. Exported so the dev gallery shows the shipped layout. */
+export function buildNarrowClusterGeometry() {
+  const halfNarrow = CFG.barrel.dodgeableWidth * 0.5
+  const h = CFG.barrel.height
+  const rN = 0.75
+  return buildCluster(
+    [-(halfNarrow - rN), -0.22, halfNarrow - rN, -0.22], [0, h + 0.30, -0.30], rN, h, 0.44, 1.55)
+}
+
+/**
+ * The 9u wall. Staggered z on the row: it reads as a barricade rather than a
+ * fence, and dropping the centre drum back is what keeps the HP plate clear.
+ */
+export function buildWallClusterGeometry() {
+  const halfWall = CFG.barrel.wallWidth * 0.5
+  const h = CFG.barrel.height
+  const rW = 0.90
+  return buildCluster(
+    [0, -0.45, -1.8, 0.10, 1.8, 0.10, -(halfWall - rW), -0.30, halfWall - rW, -0.30],
+    [-0.95, h + 0.32, -0.20, 0.95, h + 0.32, -0.20, -2.85, h + 0.32, -0.20, 2.85, h + 0.32, -0.20],
+    rW, h, 0.48, 1.70)
+}
+
 /** Three chunky figures on a ring -- readable as PEOPLE at the spawn plane. */
 /**
  * The token inside a DRONE bubble.
@@ -533,7 +556,7 @@ function buildCluster(uprights, lying, r, h, barR, barLen) {
  * the player recognise, from across the corridor, that the expensive lane holds
  * the thing they already have one of.
  */
-function buildDroneToken() {
+export function buildDroneToken() {
   const hull = new BoxGeometry(0.30, 0.085, 0.24)
   const canopy = new BoxGeometry(0.15, 0.065, 0.13)
   const podG = new CylinderGeometry(0.036, 0.036, 0.045, 6, 1)
@@ -555,7 +578,7 @@ function buildDroneToken() {
   return mergeParts(parts, 'uv')
 }
 
-function buildSoldierTrio() {
+export function buildSoldierTrio() {
   const body = new CylinderGeometry(0.085, 0.10, 0.26, 8, 1)
   const head = new SphereGeometry(0.075, 10, 8)
   const gun = new CylinderGeometry(0.022, 0.022, 0.24, 6, 1)
@@ -575,7 +598,7 @@ function buildSoldierTrio() {
 }
 
 /** Six-barrel silhouette. The barrel cluster is the whole read; keep it long. */
-function buildMinigun() {
+export function buildMinigun() {
   const barrel = new CylinderGeometry(0.030, 0.030, 0.44, 6, 1)
   const receiver = new CylinderGeometry(0.115, 0.115, 0.22, 10, 1)
   const drum = new CylinderGeometry(0.135, 0.135, 0.085, 12, 1)
@@ -673,20 +696,8 @@ export function createProps(scene, atlas) {
   const crackTex = keep(texs, bakeCrackTexture())
   const chevronTex = keep(texs, bakeChevronTexture())
 
-  const halfNarrow = CFG.barrel.dodgeableWidth * 0.5
-  const halfWall = CFG.barrel.wallWidth * 0.5
-  const h = CFG.barrel.height
-  const rN = 0.75
-  const rW = 0.90
-
-  const narrowGeo = keep(geos, buildCluster(
-    [-(halfNarrow - rN), -0.22, halfNarrow - rN, -0.22], [0, h + 0.30, -0.30], rN, h, 0.44, 1.55))
-  // Staggered z on the wall row: it reads as a barricade rather than a fence, and
-  // dropping the centre drum back is what keeps the HP plate clear of it.
-  const wallGeo = keep(geos, buildCluster(
-    [0, -0.45, -1.8, 0.10, 1.8, 0.10, -(halfWall - rW), -0.30, halfWall - rW, -0.30],
-    [-0.95, h + 0.32, -0.20, 0.95, h + 0.32, -0.20, -2.85, h + 0.32, -0.20, 2.85, h + 0.32, -0.20],
-    rW, h, 0.48, 1.70))
+  const narrowGeo = keep(geos, buildNarrowClusterGeometry())
+  const wallGeo = keep(geos, buildWallClusterGeometry())
   const decalGeo = keep(geos, new PlaneGeometry(CFG.barrel.wallWidth, 6, 1, 1).rotateX(-Math.PI * 0.5))
   const quadGeo = keep(geos, new PlaneGeometry(1, 1))
   const shellGeo = keep(geos, new IcosahedronGeometry(0.85, 2))

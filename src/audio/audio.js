@@ -115,6 +115,7 @@ export function createAudio() {
   let bedLP = null, bedGain = null, bedLowGain = null
   let noiseBuf = null
 
+  let muted = false
   let credit = VOICE_BURST
   let creditT = 0
   let denied = 0
@@ -143,7 +144,7 @@ export function createAudio() {
       hasPan = typeof ctx.createStereoPanner === 'function'
 
       master = ctx.createGain()
-      master.gain.value = MASTER
+      master.gain.value = muted ? 0 : MASTER
       master.connect(ctx.destination)
 
       comp = ctx.createDynamicsCompressor()
@@ -520,6 +521,31 @@ export function createAudio() {
   // ----------------------------------------------------------------------- api
 
   return {
+    /**
+     * Mute at the MASTER node, not by tearing the graph down: the context and
+     * every voice keep running, so unmuting is instant and mid-sound. Safe to
+     * call before the first gesture -- boot() reads the flag.
+     */
+    setMuted(m) {
+      muted = !!m
+      if (!master || !ctx) return
+      try {
+        const t = ctx.currentTime
+        master.gain.cancelScheduledValues(t)
+        master.gain.setTargetAtTime(muted ? 0 : MASTER, t, 0.02)
+      } catch { }
+    },
+
+    /** Halt the whole context (game pause). resume() undoes it. */
+    suspend() {
+      try {
+        if (ctx && ctx.state === 'running') {
+          const p = ctx.suspend()
+          if (p && typeof p.catch === 'function') p.catch(swallow)
+        }
+      } catch { }
+    },
+
     /** Must be called from a user gesture; the context does not exist before it. */
     resume() {
       try {

@@ -27,6 +27,7 @@ import { createDrones } from './view/drones.js'
 import { createTracers } from './fx/tracers.js'
 import { createParticles } from './fx/particles.js'
 import { createRings } from './fx/rings.js'
+import { createMelons } from './fx/melons.js'
 import { createDamageNumbers } from './fx/damagenumbers.js'
 import { createDecals } from './fx/decals.js'
 import { createDebris } from './fx/debris.js'
@@ -81,6 +82,7 @@ const drones = createDrones(scene)
 const particles = createParticles(scene)
 const tracers = createTracers(scene, { particles })
 const rings = createRings(scene)
+const melons = createMelons(scene)
 const decals = createDecals(scene)
 const debris = createDebris(scene)
 const damage = createDamageNumbers(scene, atlas)
@@ -90,6 +92,35 @@ const projectiles = createProjectiles(scene)
 const blasts = createBlasts({ particles, rings, tracers, decals, debris, damage })
 const hud = createHud(hudRoot)
 const audio = createAudio()
+
+// Sound toggle: master-gain mute, remembered across sessions.
+const SND_KEY = 'aov-muted'
+let sndMuted = false
+try { sndMuted = localStorage.getItem(SND_KEY) === '1' } catch { }
+audio.setMuted(sndMuted)
+hud.soundButton(sndMuted, () => {
+  sndMuted = !sndMuted
+  audio.setMuted(sndMuted)
+  try { localStorage.setItem(SND_KEY, sndMuted ? '1' : '0') } catch { }
+  return sndMuted
+})
+
+// Pause: stop the rAF loop (the last frame stays up) and suspend the audio
+// context. resync() on resume, or the stopped span lands in the accumulator
+// as one giant dt.
+let gamePaused = false
+const pauseBtn = hud.pauseButton(() => {
+  gamePaused = !gamePaused
+  if (gamePaused) {
+    loop.stop()
+    audio.suspend()
+  } else {
+    loop.resync()
+    loop.start()
+    audio.resume()
+  }
+  return gamePaused
+})
 
 const input = new Input(canvas)
 
@@ -171,6 +202,13 @@ function onRestart() {
 function restart() {
   runGeneration++
   clearTimeout(endCardTimer)
+  // A retry from a paused end screen must come back RUNNING: un-pause first
+  // or the new run starts into a stopped loop and a stale play icon.
+  if (gamePaused) {
+    gamePaused = false
+    pauseBtn.set(false)
+    loop.start()
+  }
   startRun(world, (Math.random() * 0x7fffffff) | 0)
   bus.clear()
   loop.clearHitstop()
@@ -185,6 +223,7 @@ function restart() {
   tracers.reset()
   particles.reset()
   rings.reset()
+  melons.reset()
   decals.reset()
   debris.reset()
   damage.reset()
@@ -252,6 +291,7 @@ function render(rawDt, scaledDt, alpha, frameMs) {
   gates.sync(world, rawDt, camera)
   drones.sync(world, rawDt)
   rings.sync(world, rawDt)
+  melons.sync(world)
   decals.sync(world, rawDt)
   debris.sync(world, rawDt)
   projectiles.sync(world, rawDt, camera)

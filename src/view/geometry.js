@@ -123,12 +123,13 @@ const C_Z = {
   seam: 0xe0642c, blister: 0xd8873a,
 }
 
-// Deep and saturated on purpose. The corridor's key light is warm and the
-// pre-boss danger shift pushes it warmer still, so a mid-tone violet renders as
-// cream -- and violet is the ONLY thing marking this silhouette as the boss.
+// A HUMAN in a black tee, not a monster: the boss wears a GLTF portrait head
+// (view/bosshead.js), so the body's job is to read as the body under that face.
+// The shirt is charcoal rather than true black -- at 0x000000 the vertical
+// AO gradient, the hit flash and the rage tint all have nothing to multiply.
 const C_BOSS = {
-  body: 0x5a3858, shoulder: 0x84517e, head: 0x3a2444,
-  arm: 0x4a2f48, leg: 0x422a46, spike: 0x2a1a30,
+  shirt: 0x232326, skin: 0xa17454, head: 0x8a6a50,
+  pants: 0x363b47, boot: 0x1b1b1e,
 }
 
 const _col = new Color()
@@ -687,41 +688,73 @@ export function buildBloaterGeometry() {
 export const buildZombieGeometry = buildWalkerGeometry
 
 /**
- * Boss: ~430 tris, 7.2u tall. One mesh, one draw call, so it can afford rings.
+ * Boss: ~330 tris, 7.2u tall. One mesh, one draw call. Faces +Z with
+ * everything else that walks at the squad, so the death topple reads as
+ * falling TOWARD the player.
  *
- * Same vocabulary as the brute one order of magnitude up, and it faces +Z with
- * everything else that walks at the squad: back spikes behind, head pushed
- * toward the camera, so the death topple reads as falling TOWARD the player.
+ * A heavyset HUMAN: black t-shirt with a wide shoulder yoke and short sleeves,
+ * bare skin arms, jeans, boots. The 4.7u shoulder span against 1.9u hips is
+ * the whole silhouette -- the GLTF head supplies the identity, the body only
+ * has to say "big man walking at you".
  */
-export function buildBossGeometry() {
+/**
+ * Where the boss's head sits in rig space. The procedural head ball is authored
+ * here, and the GLTF head replacement (view/bosshead.js) mounts at the same
+ * point so the two are interchangeable. `r` is the ball's radius: the loaded
+ * model is auto-scaled against it. Centred on x: the body is a symmetric human.
+ */
+export const BOSS_HEAD_ANCHOR = { x: 0, y: 6.60, z: 0.10, r: 0.60 }
+
+export function buildBossGeometry(withHead = true) {
   const c = C_BOSS
   const r = BOSS_RIG
   const H = r.height
   const parts = []
 
-  pushLeg(parts, -1, r, {
-    thighW: 0.95, thighD: 1.05, shinW: 0.88, shinD: 0.98,
-    ankle: 0.35, footW: 1.05, footD: 1.50, footZ: 0.18,
-  }, { leg: c.leg, foot: c.spike }, H)
-  pushLeg(parts, 1, r, {
-    thighW: 0.95, thighD: 1.05, shinW: 0.88, shinD: 0.98,
-    ankle: 0.35, footW: 1.05, footD: 1.50, footZ: 0.18,
-  }, { leg: c.leg, foot: c.spike }, H)
+  const legDims = {
+    thighW: 0.80, thighD: 0.90, shinW: 0.66, shinD: 0.74,
+    ankle: 0.30, footW: 0.74, footD: 1.20, footZ: 0.18,
+  }
+  pushLeg(parts, -1, r, legDims, { leg: c.pants, foot: c.boot }, H)
+  pushLeg(parts, 1, r, legDims, { leg: c.pants, foot: c.boot }, H)
 
-  parts.push(tag(box(2.10, 0.90, 1.30).translate(0, 3.35, 0), c.body, LIMB.TORSO, H))
-  parts.push(tag(box(2.70, 2.45, 1.60).translate(0, 4.85, 0), c.body, LIMB.TORSO, H))
-  parts.push(tag(box(0.55, 1.70, 0.55).translate(0, 5.90, -0.80), c.spike, LIMB.TORSO, H))
-  parts.push(tag(box(0.40, 1.10, 0.40).translate(-0.85, 5.60, -0.70), c.spike, LIMB.TORSO, H))
+  // Jeans up to the waist, then the tee: belly, chest, and the yoke that makes
+  // the shoulders. The tee hangs OVER the waistband, as a real shirt does.
+  parts.push(tag(box(1.90, 0.80, 1.10).translate(0, 3.30, 0), c.pants, LIMB.TORSO, H))
+  parts.push(tag(box(2.15, 1.40, 1.30).translate(0, 4.25, 0.05), c.shirt, LIMB.TORSO, H))
+  parts.push(tag(box(2.45, 1.30, 1.20).translate(0, 5.40, 0), c.shirt, LIMB.TORSO, H))
+  parts.push(tag(box(3.40, 0.70, 1.10).translate(0, 5.85, 0), c.shirt, LIMB.TORSO, H))
 
-  parts.push(tag(ball(1.05, 12, 8).translate(1.95, 5.85, -0.05), c.shoulder, LIMB.TORSO, H))
-  parts.push(tag(box(1.00, 0.85, 1.00).translate(-1.70, 5.75, 0), c.body, LIMB.TORSO, H))
+  // Short sleeves cap the shoulder pivots; they ride the TORSO so the bare
+  // arms swing out from under them.
+  parts.push(tag(box(0.90, 0.80, 1.05).translate(-r.shoulderX, 5.70, 0), c.shirt, LIMB.TORSO, H))
+  parts.push(tag(box(0.90, 0.80, 1.05).translate(r.shoulderX, 5.70, 0), c.shirt, LIMB.TORSO, H))
 
-  parts.push(tag(pivotX(box(0.95, 2.60, 1.00).translate(2.10, 4.30, 0), 2.10, 5.60, 0, -0.35),
-    c.arm, LIMB.ARM_R, H))
-  parts.push(tag(pivotX(box(0.55, 2.30, 0.60).translate(-1.75, 4.35, 0), -1.75, 5.50, 0, -0.45),
-    c.arm, LIMB.ARM_L, H))
+  // Neck stub under the head anchor: only visible until the GLTF head loads,
+  // whose own collar covers this joint.
+  parts.push(tag(box(0.60, 0.50, 0.60).translate(0, 6.15, 0.05), c.skin, LIMB.TORSO, H))
 
-  parts.push(tag(ball(0.60, 10, 6).translate(-0.25, 6.60, 0.25), c.head, LIMB.HEAD, H))
+  // Bare arms: upper arm, forearm, fist -- one box chain per side, hung from
+  // the same shoulder pivot the shader swings (±shoulderX, shoulderY).
+  for (const side of [-1, 1]) {
+    const x = side * r.shoulderX
+    const lid = side < 0 ? LIMB.ARM_L : LIMB.ARM_R
+    const armParts = [
+      box(0.66, 1.20, 0.72).translate(x, 4.72, 0),
+      box(0.56, 1.10, 0.62).translate(x, 3.62, 0.02),
+      box(0.52, 0.48, 0.55).translate(x, 2.86, 0.04),
+    ]
+    for (const g of armParts) {
+      parts.push(tag(pivotX(g, x, 5.60, 0, -0.28), c.skin, lid, H))
+    }
+  }
+
+  // Skipped once the GLTF head model has loaded -- bosshead.js takes over the
+  // head at BOSS_HEAD_ANCHOR and the ball would poke through it.
+  if (withHead) {
+    const a = BOSS_HEAD_ANCHOR
+    parts.push(tag(ball(a.r, 10, 6).translate(a.x, a.y, a.z), c.head, LIMB.HEAD, H))
+  }
 
   return merge(parts)
 }

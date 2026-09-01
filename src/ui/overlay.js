@@ -58,6 +58,10 @@ const CSS = `
   color:rgba(194,168,120,.62);}
 .aov-tap{margin-top:26px;font-size:13px;font-weight:700;letter-spacing:.34em;
   text-indent:.34em;color:#E0C9A0;animation:aov-pulse 1.5s ease-in-out infinite;}
+.aov-round{display:inline-block;margin-top:14px;padding:5px 14px 6px;
+  font-size:11px;font-weight:700;letter-spacing:.3em;text-indent:.3em;
+  color:#E0C9A0;border:1px solid rgba(224,201,160,.45);}
+.aov-round:empty{display:none;}
 @keyframes aov-pulse{0%{opacity:.32}50%{opacity:1}100%{opacity:.32}}
 `
 
@@ -124,6 +128,7 @@ export function createOverlay(root, onStart, onRestart) {
   div('aov-eyebrow', startCard, 'CORRIDOR ASSAULT')
   div('aov-title', startCard, 'AGE OF VIBECODERS')
   div('aov-rule', startCard)
+  const startRound = div('aov-round', startCard)
   div('aov-line', startCard, INSTRUCTION)
   div('aov-tap', startCard, 'TAP TO DEPLOY')
 
@@ -140,10 +145,22 @@ export function createOverlay(root, onStart, onRestart) {
     vals[i] = div('aov-v', row)
   }
   div('aov-btn', endCard, 'RETRY')
+  const endRound = div('aov-round', endCard)
   div('aov-hint', endCard, 'TAP ANYWHERE OR PRESS R')
 
   let mode = 0            // 0 none, 1 start, 2 end
   let armedAt = 0
+  let round = 1
+
+  /**
+   * NG+ round for the cards. Round 1 renders nothing anywhere -- a badge
+   * saying "ROUND 1" on a first launch is noise, and the mechanic should be
+   * discovered by winning, not announced up front.
+   */
+  function setRound(r) {
+    round = r
+    startRound.textContent = round > 1 ? `ROUND ${round} \u2022 +${Math.round((CFG.difficulty - 1) * 100)}% THREAT` : ''
+  }
 
   function show(next) {
     mode = next
@@ -172,6 +189,9 @@ export function createOverlay(root, onStart, onRestart) {
     vals[2].textContent = `${s.bubblesTaken} / ${s.bubblesTaken + s.bubblesMissed}`
     vals[3].textContent = s.barrelsBreached
     vals[4].textContent = WEAPONS[clamp(w.tier, 0, WEAPONS.length - 1)].name
+    // main.js advances the round on a win BEFORE this card shows, so `round`
+    // is already the next one; a loss replays the same round and says nothing.
+    endRound.textContent = won ? `NEXT: ROUND ${round}` : ''
     show(2)
   }
 
@@ -224,5 +244,5 @@ export function createOverlay(root, onStart, onRestart) {
   }
 
   hide()
-  return { showStart, showEnd, hide, reset, dispose }
+  return { showStart, showEnd, hide, reset, dispose, setRound }
 }

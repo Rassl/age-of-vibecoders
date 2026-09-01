@@ -37,8 +37,8 @@
  */
 import {
   Color, DynamicDrawUsage, Euler, InstancedBufferAttribute, InstancedMesh,
-  Matrix4, Mesh, MeshBasicMaterial, MeshLambertMaterial, PlaneGeometry,
-  Quaternion, Vector2, Vector3,
+  Matrix4, Mesh, MeshBasicMaterial, MeshDepthMaterial, MeshLambertMaterial,
+  PlaneGeometry, Quaternion, RGBADepthPacking, Vector2, Vector3,
 } from 'three'
 import { CFG } from '../config.js'
 import { clamp } from '../util/math.js'
@@ -369,6 +369,23 @@ ${pose}`
   // builds, because the default key is the SOURCE of onBeforeCompile.
   const key = `char:${opt.key}:${LIMB_ANIM.enabled ? 1 : 0}`
   mat.customProgramCacheKey = () => key
+
+  // The shadow pass renders through a MeshDepthMaterial, not through `mat`, so
+  // the SAME pose injection goes into a depth twin -- without it every shadow is
+  // a rest-pose statue sliding along under a running body. The twin shares the
+  // caller's uniform OBJECTS (uArm, uSpin, uTime...), so surface and shadow can
+  // never disagree about the pose. Attached via userData; makeCrowd wires it.
+  const depth = new MeshDepthMaterial({ depthPacking: RGBADepthPacking })
+  depth.onBeforeCompile = (shader) => {
+    if (opt.uniforms) {
+      for (const k in opt.uniforms) shader.uniforms[k] = opt.uniforms[k]
+    }
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', vHead)
+      .replace('#include <begin_vertex>', `#include <begin_vertex>\n  charPose();\n  transformed = charPos;${lump}`)
+  }
+  depth.customProgramCacheKey = () => `${key}:depth`
+  mat.userData.depthMaterial = depth
   return mat
 }
 
@@ -392,6 +409,8 @@ function makeCrowd(geo, mat, cap) {
   // sitting at the mesh origin. Leave culling on and the entire horde blinks out
   // the moment the camera tilts -- silently, with no error anywhere.
   mesh.frustumCulled = false
+  mesh.castShadow = true
+  if (mat.userData.depthMaterial) mesh.customDepthMaterial = mat.userData.depthMaterial
   mesh.instanceMatrix.setUsage(DynamicDrawUsage)
   mesh.count = 0
 
@@ -548,6 +567,8 @@ export function createCharacters(scene) {
   // A 7.2u boss is MEANT to overflow the frame. A bounds test on something that
   // surrounds the near plane is worthless, so skip it rather than risk a pop-out.
   boss.frustumCulled = false
+  boss.castShadow = true
+  boss.customDepthMaterial = bossMat.userData.depthMaterial
   boss.visible = false
 
   scene.add(soldiers.mesh, joiners.mesh, guns.mesh, bars.mesh, boss)

@@ -21,6 +21,8 @@ const ACID_HALO = new Color().setHex(0x6aff9c, SRGBColorSpace)
 const m = new Matrix4()
 const tint = new Color()
 
+const _prime = new Color()
+
 export function createProjectiles(scene) {
   const cap = CFG.pool.spits
 
@@ -35,6 +37,11 @@ export function createProjectiles(scene) {
 
   const core = new InstancedMesh(coreGeo, coreMat, cap)
   const halo = new InstancedMesh(haloGeo, haloMat, cap)
+  // Prime instanceColor at boot: setColorAt() allocates it lazily, and the
+  // allocation re-links the program (forward AND shadow depth) on the exact
+  // frame the first projectile appears -- felt as a hitch, not seen as an error.
+  _prime.setRGB(1, 1, 1)
+  for (let i = 0; i < cap; i++) { core.setColorAt(i, _prime); halo.setColorAt(i, _prime) }
   for (const mesh of [core, halo]) {
     // Matrices are written every frame, so three's bounding-sphere cull would
     // make every projectile vanish the moment the camera turns.

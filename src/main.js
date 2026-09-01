@@ -63,6 +63,11 @@ const camera = new THREE.PerspectiveCamera(CFG.camera.fov, 1, CFG.camera.near, C
 deriveConfig(canvas.clientWidth || window.innerWidth, canvas.clientHeight || window.innerHeight)
 validateConfig()
 
+// One 2K (1K on coarse pointers) shadow map, owned by the corridor's key light.
+// Set before any view builds a material so nothing needs a needsUpdate pass.
+renderer.shadowMap.enabled = true
+renderer.shadowMap.type = THREE.PCFShadowMap
+
 const world = createWorld((Math.random() * 0x7fffffff) | 0)
 
 const atlas = createGlyphAtlas()
@@ -90,6 +95,31 @@ const input = new Input(canvas)
 
 const overlay = createOverlay(overlayRoot, onStart, onRestart)
 
+// ------------------------------------------------------------- NG+ rounds ---
+// One completed run unlocks the next round; each round raises CFG.difficulty,
+// which curves.js applies to obstacle pricing (horde, barrels, boss). Rewards
+// and the safety caps are untouched, so a harder round squeezes the budget
+// rather than rigging the dice. Persisted so the loop survives a reload;
+// storage is best-effort -- a blocked localStorage just means every session
+// starts at round 1.
+const ROUND_KEY = 'aov-round'
+const DIFFICULTY_PER_ROUND = 0.15
+
+function loadRound() {
+  try {
+    const r = parseInt(localStorage.getItem(ROUND_KEY), 10)
+    return Number.isFinite(r) && r >= 1 ? Math.min(r, 99) : 1
+  } catch { return 1 }
+}
+
+let round = loadRound()
+
+function applyRound() {
+  CFG.difficulty = 1 + DIFFICULTY_PER_ROUND * (round - 1)
+  overlay.setRound(round)
+}
+applyRound()
+
 const loop = new Loop(step, render, beforeStep)
 
 wireReactions({ loop, camera: cameraRig, particles, tracers, rings, hud, audio, world, blasts })
@@ -102,6 +132,14 @@ bus.on(T.RUN_OVER, (e) => {
   // has already restarted by then, the queued card must not pop over a live run.
   const gen = runGeneration
   const won = e.a === 1
+  if (won) {
+    // Advance BEFORE the card shows: the end card announces the next round,
+    // and the next restart() prices against it. Applied here, not in restart(),
+    // so retrying a lost round replays the same difficulty.
+    round++
+    try { localStorage.setItem(ROUND_KEY, String(round)) } catch { /* best-effort */ }
+    applyRound()
+  }
   clearTimeout(endCardTimer)
   endCardTimer = setTimeout(() => {
     if (gen === runGeneration) overlay.showEnd(world, won)
@@ -221,7 +259,7 @@ function render(rawDt, scaledDt, alpha, frameMs) {
   particles.sync(rawDt, camera)
   damage.sync(world, rawDt, camera)
   hud.sync(world)
-  audio.setIntensity(Math.min(1, world.count / CFG.squad.maxCount))
+  audio.setIntensity(Math.min(1, world.count / CFG.squad.intensityRef))
   audio.sync(rawDt, world)
 
   const t0 = performance.now()
@@ -309,9 +347,22 @@ resize()
 function prewarmShaders() {
   const restore = []
   scene.traverse((o) => {
-    if (!o.isMesh && !o.isPoints && !o.isLine) return
-    restore.push([o, o.visible, o.count])
+    // Groups too, not just meshes: a barrel cluster is a visible mesh inside an
+    // INVISIBLE group, so opening only meshes leaves its program uncompiled --
+    // and the compile stall then lands on the first explosion instead of here.
+    if (!o.isMesh && !o.isPoints && !o.isLine) {
+      if (o.visible === false) {
+        restore.push([o, o.visible, undefined])
+        o.visible = true
+      }
+      return
+    }
+    restore.push([o, o.visible, o.count, o.frustumCulled])
     o.visible = true
+    // Pooled meshes are parked outside the camera AND the shadow frustum, so a
+    // visible-only warm-up still never draws them; culling off for this one
+    // frame is what actually forces every program -- depth pass included.
+    o.frustumCulled = false
     if (o.isInstancedMesh && o.count === 0) o.count = 1
   })
   try {
@@ -322,8 +373,9 @@ function prewarmShaders() {
     console.warn('shader prewarm skipped:', err && err.message)
   }
   for (let i = 0; i < restore.length; i++) {
-    const [o, vis, count] = restore[i]
+    const [o, vis, count, culled] = restore[i]
     o.visible = vis
+    if (culled !== undefined) o.frustumCulled = culled
     if (o.isInstancedMesh) o.count = count
   }
 }
@@ -338,6 +390,6 @@ overlay.showStart()
 loop.start()
 
 if (import.meta.env && import.meta.env.DEV) {
-  window.__game = { world, CFG, loop, renderer, scene, camera,
+  window.__game = { world, CFG, loop, renderer, scene, camera, bus, T,
     views: { cameraRig, corridor, characters, props, gates, drones, rings, decals, debris, projectiles, tracers, particles, damage, hud } }
 }

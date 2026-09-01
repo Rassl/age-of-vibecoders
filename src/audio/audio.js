@@ -603,7 +603,7 @@ export function createAudio() {
       if (intensity > target) target = intensity
 
       if (w) {
-        crowd = clamp((w.count || 0) / CFG.squad.maxCount, 0, 1)
+        crowd = clamp((w.count || 0) / CFG.squad.intensityRef, 0, 1)
         const st = w.state
         if (st === ST_READY || st === ST_WON || st === ST_LOST) target = 0
       }

@@ -19,9 +19,10 @@
  * rock inside them is a promise the simulation cannot keep.
  */
 import {
-  BackSide, BoxGeometry, BufferAttribute, BufferGeometry, Color, DirectionalLight,
-  DodecahedronGeometry, FogExp2, Group, HemisphereLight, InstancedMesh, Mesh,
-  MeshLambertMaterial, PlaneGeometry, ShaderMaterial, SphereGeometry, SRGBColorSpace,
+  BackSide, BoxGeometry, BufferAttribute, BufferGeometry, CanvasTexture, Color,
+  DirectionalLight, DodecahedronGeometry, FogExp2, Group, HemisphereLight,
+  InstancedMesh, Mesh, MeshBasicMaterial, MeshLambertMaterial, PlaneGeometry,
+  RepeatWrapping, ShaderMaterial, SphereGeometry, SRGBColorSpace, Vector3,
 } from 'three'
 import { CFG } from '../config.js'
 import { remap } from '../util/math.js'
@@ -53,12 +54,19 @@ const C_KEY = 0xffe7c2
 
 // Boss approach. The sky top goes toward the boss's violet so the finale is
 // foreshadowed by the world rather than announced by the HUD.
+const C_GLOW = 0xffd9a0        // dusk lobe + sun disc down the corridor
+const C_RIDGE_A = 0x6e6053     // near mountain layer, darker than the sand
+const C_RIDGE_B = 0x8c7d68     // far layer, drifting toward the fog
+
 const C_FOG_HOT = 0xc27a52
 const C_HORIZON_HOT = 0xe08a52
 const C_SKY_TOP_HOT = 0x3e2c3a
 const C_HEMI_SKY_HOT = 0x8a5a6e
 const C_HEMI_GND_HOT = 0x8c4030
 const C_KEY_HOT = 0xff7a4a
+const C_GLOW_HOT = 0xff6a38
+const C_RIDGE_A_HOT = 0x4a3038
+const C_RIDGE_B_HOT = 0x6e4438
 const DANGER_LEAD = 10   // seconds of corridor over which the light turns
 
 // --------------------------------------------------------------------- layout
@@ -206,31 +214,133 @@ function buildMarkingsGeometry() {
 }
 
 const SKY_VERT = `
-varying float vH;
+varying vec3 vDir;
 void main() {
-  vH = normalize(position).y;
+  vDir = position;
   gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
 }
 `
 
 // The bottom stop is EXACTLY the fog colour. Any difference at all and the fog
 // line stops reading as distance and starts reading as a wall across the level.
+// On top of the gradient: a low sun straight down the corridor (the vanishing
+// point is where the eye already lives, so that is where the light goes), and
+// two trig cirrus bands so the upper third is not a dead flat field.
 const SKY_FRAG = `
 #include <common>
 #include <dithering_pars_fragment>
 uniform vec3 uFog;
 uniform vec3 uHorizon;
 uniform vec3 uTop;
-varying float vH;
+uniform vec3 uGlow;
+uniform vec3 uSunDir;
+varying vec3 vDir;
 void main() {
-  vec3 c = mix(uFog, uHorizon, smoothstep(0.0, 0.10, vH));
-  c = mix(c, uTop, smoothstep(0.13, 0.85, vH));
+  vec3 dir = normalize(vDir);
+  float h = dir.y;
+  vec3 c = mix(uFog, uHorizon, smoothstep(0.0, 0.10, h));
+  c = mix(c, uTop, smoothstep(0.13, 0.85, h));
+
+  // Cirrus streaks: long in azimuth, thin in elevation. Applied before the sun
+  // lobe so the glow sits over the clouds, not under them.
+  float a = atan(dir.x, -dir.z);
+  float band = sin(h * 34.0 + a * 2.1 + 1.3) * sin(h * 13.0 - a * 3.7 + 0.6);
+  float cl = smoothstep(0.015, 0.06, h) * smoothstep(0.55, 0.16, h);
+  c = mix(c, mix(uTop, uHorizon, 0.60), cl * max(band, 0.0) * 0.35);
+
+  // Dusk lobe low over the vanishing point, plus the disc itself. The disc adds
+  // rather than mixes: under ACES that is what lets it read as LIGHT.
+  float sunAmt = max(dot(dir, uSunDir), 0.0);
+  float lobe = pow(sunAmt, 5.0) * smoothstep(0.40, 0.0, abs(h - 0.05));
+  c += uGlow * lobe * 0.50;
+  c += uGlow * smoothstep(0.99930, 0.99975, sunAmt) * 1.5;
+
   gl_FragColor = vec4(c, 1.0);
   #include <tonemapping_fragment>
   #include <colorspace_fragment>
   #include <dithering_fragment>
 }
 `
+
+// ------------------------------------------------------- procedural surfaces
+
+/**
+ * Tileable grayscale detail texture: per-pixel speckle plus soft blotches, the
+ * blotches stamped on a 3x3 lattice so the wrap has no seam. Values live in
+ * [lo, hi] out of 255 -- a pure VALUE multiplier under the material colour, so
+ * the palette stays one hex per surface.
+ */
+function makeDetailTexture(seed, lo, hi, blotches, darkA, lightA) {
+  const SZ = 128
+  const cv = document.createElement('canvas')
+  cv.width = SZ
+  cv.height = SZ
+  const ctx = cv.getContext('2d')
+  const img = ctx.createImageData(SZ, SZ)
+  const px = img.data
+  for (let i = 0; i < SZ * SZ; i++) {
+    const v = lo + (hi - lo) * hash2(seed, i)
+    px[i * 4] = v; px[i * 4 + 1] = v; px[i * 4 + 2] = v; px[i * 4 + 3] = 255
+  }
+  ctx.putImageData(img, 0, 0)
+  for (let b = 0; b < blotches; b++) {
+    const x = SZ * hash2(seed + 1, b)
+    const y = SZ * hash2(seed + 2, b)
+    const r = SZ * (0.06 + 0.14 * hash2(seed + 3, b))
+    const dark = hash2(seed + 4, b) < 0.6
+    for (let oy = -1; oy <= 1; oy++) for (let ox = -1; ox <= 1; ox++) {
+      const g = ctx.createRadialGradient(x + ox * SZ, y + oy * SZ, 0, x + ox * SZ, y + oy * SZ, r)
+      g.addColorStop(0, dark ? `rgba(0,0,0,${darkA})` : `rgba(255,255,255,${lightA})`)
+      g.addColorStop(1, 'rgba(0,0,0,0)')
+      ctx.fillStyle = g
+      ctx.fillRect(x + ox * SZ - r, y + oy * SZ - r, r * 2, r * 2)
+    }
+  }
+  const tex = new CanvasTexture(cv)
+  tex.wrapS = RepeatWrapping
+  tex.wrapT = RepeatWrapping
+  tex.colorSpace = SRGBColorSpace
+  tex.anisotropy = 4
+  return tex
+}
+
+// Mean multiplier of a [205, 255] speckle in linear space; the material colour
+// is scaled back up by 1/this so the detail map changes texture, not exposure.
+const DETAIL_MEAN = 0.795
+
+/**
+ * One ridge line of overlapping fog-hazed triangles: distant mesas. Cardboard
+ * on purpose -- at 100u+ inside FogExp2 all that survives is silhouette, and a
+ * silhouette is one triangle, not a mesh.
+ */
+function buildRidgeGeometry(seed, span, baseH) {
+  const TRIS = 30
+  const pos = new Float32Array(TRIS * 9)
+  const col = new Float32Array(TRIS * 9)
+  const nor = new Float32Array(TRIS * 9)
+  for (let k = 0; k < TRIS; k++) {
+    const cx = -span + 2 * span * ((k + 0.5) / TRIS) + (hash2(seed, k) - 0.5) * span * 0.09
+    const w = span / TRIS * (1.6 + 2.6 * hash2(seed, k + 7))
+    const h = baseH * (0.30 + 0.95 * hash2(seed, k + 3))
+    const apex = cx + (hash2(seed, k + 5) - 0.5) * w * 0.8
+    const v = 0.86 + 0.26 * hash2(seed, k + 17)
+    const o = k * 9
+    // CCW as seen from +z (the camera side): base-left, base-right, apex.
+    pos[o] = cx - w; pos[o + 1] = 0; pos[o + 2] = 0
+    pos[o + 3] = cx + w; pos[o + 4] = 0; pos[o + 5] = 0
+    pos[o + 6] = apex; pos[o + 7] = h; pos[o + 8] = 0
+    // Base sits in the haze, apex catches the light: a cheap aerial gradient.
+    col[o] = col[o + 1] = col[o + 2] = v * 0.94
+    col[o + 3] = col[o + 4] = col[o + 5] = v * 0.94
+    col[o + 6] = col[o + 7] = col[o + 8] = v * 1.14
+    nor[o + 2] = nor[o + 5] = nor[o + 8] = 1
+  }
+  const geo = new BufferGeometry()
+  geo.setAttribute('position', new BufferAttribute(pos, 3))
+  geo.setAttribute('normal', new BufferAttribute(nor, 3))
+  geo.setAttribute('color', new BufferAttribute(col, 3))
+  return geo
+}
 
 /**
  * Build the world the player runs down.
@@ -261,6 +371,11 @@ export function createCorridor(scene) {
       uFog: { value: new Color(C_FOG) },
       uHorizon: { value: new Color(C_HORIZON) },
       uTop: { value: new Color(C_SKY_TOP) },
+      uGlow: { value: new Color(C_GLOW) },
+      // Slightly left of the vanishing point, matching the key's azimuth side,
+      // and LOW: the disc half-sets behind the ridge line instead of floating
+      // in the dead centre of the sky band.
+      uSunDir: { value: new Vector3(-0.12, 0.055, -1.0).normalize() },
     },
     vertexShader: SKY_VERT,
     fragmentShader: SKY_FRAG,
@@ -284,6 +399,29 @@ export function createCorridor(scene) {
   key.position.set(-39.5, 38.6, 23.0)
   group.add(hemi, key, key.target)
 
+  // Cool sky-bounce from behind the horde. Diffuse-only backlight cannot rim a
+  // silhouette, but it does put a value step on every shoulder and skull top,
+  // which is what separates a fogged crowd from a fogged road.
+  const rim = new DirectionalLight(0x9db8ff, 0.40)
+  rim.position.set(16.0, 22.0, -38.0)
+  group.add(rim, rim.target)
+
+  // The key carries the ONE shadow map. Frustum hugs the playfield plus the
+  // near shoulder props; everything further is fogged too hard for a shadow to
+  // read anyway. Sized by pointer class, and the DPR governor still owns the
+  // overall fill budget.
+  key.castShadow = true
+  const shadowSize = CFG.derived.isMobile ? 1024 : 2048
+  key.shadow.mapSize.set(shadowSize, shadowSize)
+  key.target.position.set(0, 0, -16)
+  const sc = key.shadow.camera
+  sc.left = -34; sc.right = 34; sc.top = 34; sc.bottom = -34
+  sc.near = 15; sc.far = 130
+  // Flat-shaded boxes acne along their own faces at grazing key angles;
+  // normalBias pushes the sample off the surface without peter-panning feet.
+  key.shadow.bias = -0.00015
+  key.shadow.normalBias = 0.06
+
   // -------------------------------------------------------------------- ground
   // One static plane: uniform sand has no features, so scrolling it would be work
   // nobody can see. All motion lives in the road markings, posts and props.
@@ -291,14 +429,41 @@ export function createCorridor(scene) {
   sandGeo.rotateX(-Math.PI / 2)
   sandGeo.translate(0, SAND_Y, -150)
   bakeSandValue(sandGeo)
-  own(new Mesh(sandGeo, new MeshLambertMaterial({ color: C_SAND, vertexColors: true })))
+  const sandTex = makeDetailTexture(7, 205, 255, 26, 0.10, 0.08)
+  sandTex.repeat.set(48, 60)
+  const sandMat = new MeshLambertMaterial({ color: C_SAND, vertexColors: true, map: sandTex })
+  sandMat.color.multiplyScalar(1 / DETAIL_MEAN)
+  const sand = new Mesh(sandGeo, sandMat)
+  sand.receiveShadow = true
+  own(sand)
+
+  // ---------------------------------------------------------------- mountains
+  // Two static silhouette layers behind the fog wall. No parallax on purpose:
+  // at 100u+ the camera's 2u of lateral travel moves them under a pixel, and
+  // integrating a scroll for them is drift risk for zero visible motion.
+  const ridgeMatA = new MeshBasicMaterial({ color: C_RIDGE_A, vertexColors: true })
+  const ridgeMatB = new MeshBasicMaterial({ color: C_RIDGE_B, vertexColors: true })
+  const ridgeA = new Mesh(buildRidgeGeometry(3, 150, 11), ridgeMatA)
+  ridgeA.position.set(0, SAND_Y, -104)
+  const ridgeB = new Mesh(buildRidgeGeometry(11, 190, 15), ridgeMatB)
+  ridgeB.position.set(28, SAND_Y, -132)
+  ridgeA.frustumCulled = false
+  ridgeB.frustumCulled = false
+  own(ridgeB)
+  own(ridgeA)
 
   // ---------------------------------------------------------- road + markings
   const roadGeo = new PlaneGeometry(CFG.world.corridorWidth, TILE_LEN, 8, 1)
   roadGeo.rotateX(-Math.PI / 2)
   bakeRoadWear(roadGeo)
-  const road = new InstancedMesh(roadGeo, new MeshLambertMaterial({ color: C_ASPHALT, vertexColors: true }), TILE_COUNT)
+  // Whole repeats per tile in both axes, or the speckle seams at the recycle.
+  const roadTex = makeDetailTexture(23, 205, 255, 14, 0.05, 0.04)
+  roadTex.repeat.set(3, 18)
+  const roadMat = new MeshLambertMaterial({ color: C_ASPHALT, vertexColors: true, map: roadTex })
+  roadMat.color.multiplyScalar(1 / DETAIL_MEAN)
+  const road = new InstancedMesh(roadGeo, roadMat, TILE_COUNT)
   road.frustumCulled = false
+  road.receiveShadow = true
   own(road)
 
   // polygonOffset, never a y-lift: a lift looks correct near the camera and
@@ -313,6 +478,7 @@ export function createCorridor(scene) {
   })
   const marks = new InstancedMesh(buildMarkingsGeometry(), markMat, TILE_COUNT)
   marks.frustumCulled = false
+  marks.receiveShadow = true
   own(marks)
 
   // ------------------------------------------------------------------ railings
@@ -321,6 +487,7 @@ export function createCorridor(scene) {
   postGeo.translate(0, POST_H * 0.5, 0)   // origin at the base: instances sit at y = 0
   const posts = new InstancedMesh(postGeo, steelMat, POSTS_PER_SIDE * 2)
   posts.frustumCulled = false
+  posts.castShadow = true
   own(posts)
 
   // Rust every 3rd post, keyed on the post's WORLD ordinal, so the 2.1Hz sub-beat
@@ -351,12 +518,16 @@ export function createCorridor(scene) {
   const rockGeo = new DodecahedronGeometry(0.5, 0)
   const rocks = new InstancedMesh(rockGeo, new MeshLambertMaterial({ color: 0xffffff }), ROCK_CAP)
   rocks.frustumCulled = false
+  rocks.castShadow = true
+  rocks.receiveShadow = true
   own(rocks)
 
   const boxGeo = new BoxGeometry(1, 1, 1)
   boxGeo.translate(0, 0.5, 0)
   const boxes = new InstancedMesh(boxGeo, new MeshLambertMaterial({ color: 0xffffff }), BOX_CAP)
   boxes.frustumCulled = false
+  boxes.castShadow = true
+  boxes.receiveShadow = true
   own(boxes)
 
   // setColorAt() lazily allocates the attribute, so prime both here at boot --
@@ -379,6 +550,9 @@ export function createCorridor(scene) {
   const HS_COOL = new Color(C_HEMI_SKY), HS_HOT = new Color(C_HEMI_SKY_HOT)
   const HG_COOL = new Color(C_HEMI_GND), HG_HOT = new Color(C_HEMI_GND_HOT)
   const KEY_COOL = new Color(C_KEY), KEY_HOT = new Color(C_KEY_HOT)
+  const GLOW_COOL = new Color(C_GLOW), GLOW_HOT = new Color(C_GLOW_HOT)
+  const RA_COOL = new Color(C_RIDGE_A), RA_HOT = new Color(C_RIDGE_A_HOT)
+  const RB_COOL = new Color(C_RIDGE_B), RB_HOT = new Color(C_RIDGE_B_HOT)
   const DANGER_MAX = 0.42
   let dangerApplied = -1
 
@@ -392,6 +566,9 @@ export function createCorridor(scene) {
     hemi.groundColor.lerpColors(HG_COOL, HG_HOT, k)
     key.color.lerpColors(KEY_COOL, KEY_HOT, k)
     key.intensity = 1.15 + 0.25 * k
+    skyMat.uniforms.uGlow.value.lerpColors(GLOW_COOL, GLOW_HOT, k)
+    ridgeMatA.color.lerpColors(RA_COOL, RA_HOT, k)
+    ridgeMatB.color.lerpColors(RB_COOL, RB_HOT, k)
     dangerApplied = k
   }
   applyDanger(0)
@@ -528,6 +705,8 @@ export function createCorridor(scene) {
 
   function dispose() {
     scene.remove(group)
+    sandTex.dispose()
+    roadTex.dispose()
     if (scene.fog === fog) scene.fog = prevFog
     for (let i = 0; i < geos.length; i++) geos[i].dispose()
     for (let i = 0; i < mats.length; i++) mats[i].dispose()

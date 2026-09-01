@@ -74,7 +74,10 @@ export function barrelHP(role, t, nominalDPS, hpScale = 1) {
     ? 1 - b.lambdaDown[role] * (1 - r)
     : 1 + b.lambdaUp[role] * (r - 1)
   const clamped = clamp(scale, b.scaleClamp[0], b.scaleClamp[1])
-  const hp = b.alpha[role] * windowSeconds(t) * par * clamped * hpScale
+  // NG+ prices obstacles up but leaves the reward bubble alone: harder rounds
+  // must squeeze the budget, not quietly confiscate the rewards.
+  const D = role === 'bubble' ? 1 : CFG.difficulty
+  const hp = b.alpha[role] * windowSeconds(t) * par * clamped * hpScale * D
   return roundHp(hp)
 }
 
@@ -142,9 +145,12 @@ export function zombieHP(t, kind) {
  */
 export function threatBeta(t) {
   const th = CFG.threat
+  // NG+ scales the WHOLE pressure curve, lull included: the lull survives as a
+  // breather because it is relative to the surrounding waves, not absolute.
+  const D = CFG.difficulty
   if (t >= th.lullFrom && t < CFG.world.runSeconds) {
     // The lull exists so the player can read their build before it is tested.
-    return th.lullBeta
+    return th.lullBeta * D
   }
   let beta = th.betaBase + th.betaRate * t
   for (const [centre, amp] of th.waves) beta += amp * waveEnvelope(t, centre)
@@ -153,7 +159,7 @@ export function threatBeta(t) {
     const k = smoothstep(clamp((t - c.from) / Math.max(0.001, c.to - c.from - 1), 0, 1))
     beta = Math.max(beta, lerp(beta, c.peakBeta, k))
   }
-  return beta
+  return beta * D
 }
 
 function waveEnvelope(t, centre) {
@@ -181,8 +187,11 @@ export function spawnRate(t, nominalDPS) {
  */
 export function bossHP(nominalDPS) {
   const b = CFG.boss
+  const D = CFG.difficulty
   const raw = b.hpTau * (b.hpPar * parDPS(CFG.world.runSeconds) + b.hpActual * nominalDPS)
-  return Math.round(clamp(raw, b.hpMin, b.hpMax))
+  // The ceiling scales with NG+ too, or every round past the first would clamp
+  // to the same boss and the loop would stop escalating exactly at the finale.
+  return Math.round(clamp(raw * D, b.hpMin, b.hpMax * D))
 }
 
 // ------------------------------------------------------------------ formation

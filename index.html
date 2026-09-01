@@ -24,6 +24,13 @@
   #stage { position: relative; overflow: hidden;
            box-shadow: 0 0 0 1px #1c2026, 0 20px 80px rgba(0,0,0,.6); }
   #game-canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+  /* Cinematic vignette over the canvas, under the HUD. Composited by the
+     browser, so it costs the GPU nothing per frame. Kept subtle: it frames the
+     corridor without eating the readable value range at the screen edges. */
+  #vignette { position: absolute; inset: 0; pointer-events: none; z-index: 5;
+              background:
+                radial-gradient(140% 105% at 50% 42%, transparent 58%, rgba(8,6,4,.32) 100%),
+                linear-gradient(rgba(8,6,4,.10), transparent 14%); }
   #hud { position: absolute; inset: 0; pointer-events: none; z-index: 10; }
   #overlay { position: absolute; inset: 0; z-index: 20; display: grid; place-items: center; }
 </style>
@@ -44,6 +51,7 @@
   <div id="app">
     <div id="stage">
       <canvas id="game-canvas"></canvas>
+      <div id="vignette"></div>
       <div id="hud"></div>
       <div id="overlay"></div>
     </div>

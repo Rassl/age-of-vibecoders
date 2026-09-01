@@ -78,6 +78,7 @@ export function createDrones(scene) {
 
   const hullMat = keep(mats, new MeshBasicMaterial({ toneMapped: true }))
   const hull = new InstancedMesh(hullGeo, hullMat, cap)
+  hull.castShadow = true
   hull.frustumCulled = false
   hull.count = 0
   scene.add(hull)
@@ -122,6 +123,15 @@ export function createDrones(scene) {
   }
   bolts.renderOrder = 9
   boltHalo.renderOrder = 8
+
+  // Prime instanceColor on every mesh at boot: setColorAt() allocates the
+  // attribute lazily, and the allocation re-links the program (forward AND the
+  // hull's shadow-depth variant) on the exact frame the first drone appears --
+  // felt as a hitch right after the reward that granted it.
+  for (let i = 0; i < cap; i++) hull.setColorAt(i, BODY)
+  for (let i = 0; i < cap * ARMS.length; i++) rotors.setColorAt(i, ROTOR)
+  for (let i = 0; i < cap; i++) lamps.setColorAt(i, ROTOR)
+  for (let i = 0; i < boltCap; i++) { bolts.setColorAt(i, BOLT_CORE); boltHalo.setColorAt(i, BOLT_HALO) }
 
   let clock = 0
 

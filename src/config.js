@@ -9,6 +9,12 @@
 export const FIXED_DT = 1 / 60
 
 export const CFG = {
+  // NG+ scalar. 1.0 is the authored baseline every table in this file is tuned
+  // against. main.js raises it per completed round; curves.js applies it to
+  // OBSTACLE pricing only (horde pressure, barrel/wall HP, boss HP) -- never to
+  // rewards, safety caps, or the pre-boss lull's existence.
+  difficulty: 1.0,
+
   world: {
     corridorWidth: 9.0,   // three readable 3u lanes
     railX: 4.5,
@@ -42,7 +48,14 @@ export const CFG = {
 
   squad: {
     startCount: 3,
-    maxCount: 40,
+    // Effectively unlimited: no run can earn this many under the reward
+    // economy, so growth never hits the ceiling. It stays finite because the
+    // instanced GPU buffers in view/characters.js are sized from pool.soldiers
+    // at boot -- maxCount must never exceed that.
+    maxCount: 250,
+    // Audio/haptics "full crowd" reference. Was maxCount when maxCount was 40;
+    // pinned here so an uncapped squad does not flatten the intensity curve.
+    intensityRef: 40,
     anchorTau: 0.06,
     soldierRadius: 0.18,
     iframeSeconds: 0.70,
@@ -107,8 +120,8 @@ export const CFG = {
     // same SECONDS no matter how strong you are, so the opportunity cost of the
     // greedy lane never decays. Mandatory content (wall) blends below 1.0 so it
     // gets genuinely easier as you grow and nobody is ever walled out.
-    lambdaDown: { bubble: 0.60, cheap: 0.50, wall: 0.85, toll: 0.20 },
-    lambdaUp: { bubble: 1.00, cheap: 0.85, wall: 0.55, toll: 1.00 },
+    lambdaDown: { bubble: 0.60, cheap: 0.38, wall: 0.62, toll: 0.30 },
+    lambdaUp: { bubble: 1.00, cheap: 0.95, wall: 0.80, toll: 1.00 },
     scaleClamp: [0.4, 3.0],
     breachF: { wall: 0.60, cheap: 0.35, toll: 0.35 },
     breachExp: 1.5,       // near-kills are nearly free; ignoring one is brutal
@@ -124,7 +137,7 @@ export const CFG = {
     radius: 0.7,
     y: 1.1,
     perBubbleBase: 2,
-    perBubbleRate: 0.055,
+    perBubbleRate: 0.052,
     perBubbleMax: 8,
     missPenalty: 0,       // never punish a miss
     joinerSpeed: 16,
@@ -133,8 +146,8 @@ export const CFG = {
   },
 
   zombie: {
-    walkerHpBase: 7,
-    hpDouble: 50,         // seconds per 1.5x -- crowds get bigger, not tankier
+    walkerHpBase: 8,
+    hpDouble: 45,         // seconds per 1.5x -- crowds get bigger, not tankier
     lateralHoming: 2.5,
     // Per-kind speed/radius/kills/hpMult live in data/enemies.js.
     spitSpeed: 15,        // acid projectile
@@ -143,13 +156,13 @@ export const CFG = {
   },
 
   threat: {
-    betaBase: 0.070,
-    betaRate: 0.0007,
-    waves: [[26, 0.10], [46, 0.12], [62, 0.14], [84, 0.18], [100, 0.40]],
+    betaBase: 0.104,
+    betaRate: 0.0013,
+    waves: [[26, 0.15], [46, 0.18], [62, 0.21], [84, 0.27], [100, 0.55]],
     waveRise: 2.0, waveHold: 2.0, waveFall: 3.0,
-    crescendo: { from: 96, to: 101, peakBeta: 0.90, sweeps: [97, 100, 103] },
-    lullFrom: 101, lullBeta: 0.08,
-    spawnCap: 34,
+    crescendo: { from: 96, to: 101, peakBeta: 1.18, sweeps: [97, 100, 103] },
+    lullFrom: 101, lullBeta: 0.10,
+    spawnCap: 44,
     clusterSpread: 2.6,
     clusterWidth: 1.5,
   },
@@ -346,9 +359,9 @@ export const CFG = {
   },
 
   pool: {
-    soldiers: 64, joiners: 24, zombies: 220, props: 12, shockwaves: 12,
+    soldiers: 256, joiners: 48, zombies: 220, props: 12, shockwaves: 12,
     impacts: 256, tracers: 256, muzzle: 32, particles: 4096, glyphs: 96, spits: 48,
-    decals: 64, rings: 320, eventRing: 2048, chunks: 48,
+    decals: 64, rings: 512, eventRing: 2048, chunks: 48,
     drones: 4, bolts: 48,
   },
 

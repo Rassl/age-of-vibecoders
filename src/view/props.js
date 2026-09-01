@@ -758,6 +758,10 @@ export function createProps(scene, atlas) {
 
     const narrow = new Mesh(narrowGeo, mat)
     const wide = new Mesh(wallGeo, mat)
+    narrow.castShadow = true
+    narrow.receiveShadow = true
+    wide.castShadow = true
+    wide.receiveShadow = true
     wide.visible = false
     group.add(narrow, wide)
 

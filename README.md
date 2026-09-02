@@ -28,6 +28,19 @@ npm run build      # static bundle in dist/ -- base is './', so it deploys anywh
 bullets travel straight down `-Z` from each soldier's muzzle, so *you aim with your body*,
 and that single decision is what everything else in the design hangs off.
 
+**Three run modes**, cycling with the NG+ round (`?mode=advance|hold|turret` pins one):
+
+- **ADVANCE** (round 1, 4, 7…) — the lane-runner above. You drag the squad.
+- **HOLD THE LINE** (round 2, 5…) — the squad plants, the road stops, the horde walks in.
+- **MAN THE GUN** (round 3, 6…) — a mounted gun on the truck behind the squad. *You drag
+  the gun*, sweeping a laser sight across the road; the squad steers itself with the
+  harness bot's lane policy (`src/sim/autopilot.js`) and fires as always. The turret's ray
+  is the one shot in the game that leaves at an angle, so it can break the toll the squad
+  is not standing behind, pop a spitter in the other lane, or prime a bloater early. Its
+  damage is a fixed slice of par (`CFG.turret.dpsFrac`), priced like a drone's, so barrels
+  stay priced against the squad and the gun is pure surplus — what it buys is the *second*
+  lane, if you can hold it.
+
 On a wide window the game letterboxes to a portrait stage instead of showing acres of
 empty desert with the squad as a speck. Drag distance is resolution-independent: crossing
 the 9-unit corridor always costs 55% of the window width or 300 physical pixels, whichever
@@ -264,10 +277,10 @@ which is how those tools drive and measure the running game.
 | `src/config.js` | **The** tuning table. Every gameplay number, and nothing else. |
 | `src/curves.js` | The economy as pure functions. The harness imports this file, so the balance tables and the shipped game are provably the same code. |
 | `src/core/` | `loop.js` (fixed 1/60 timestep, 3-substep ceiling, hitstop stack — the only `requestAnimationFrame` and the only place `dt` is scaled), `bus.js`, `input.js` |
-| `src/sim/` | The simulation. Never imports three.js. `systems.js` is the tick order. |
+| `src/sim/` | The simulation. Never imports three.js. `systems.js` is the tick order. `autopilot.js` is the lane policy the harness bot and the turret round's self-driving squad share. |
 | `src/util/` | `pool.js` (the fixed-capacity pool, swap-remove and generation counter), `math.js`, `rng.js` — seeded, so the harness is reproducible. |
 | `src/data/` | `weapons.js`, `enemies.js`, `encounters.js` — flat tables. A new enemy is one row plus a rig in `view/geometry.js`. |
-| `src/view/`, `src/fx/` | Read-only observers of sim state. Instanced meshes, procedural geometry, the glyph atlas. |
+| `src/view/`, `src/fx/` | Read-only observers of sim state. Instanced meshes, procedural geometry, the glyph atlas. `view/turret.js` is the mounted gun and its laser sight. |
 | `src/ui/` | `hud.js` and `overlay.js` — the only DOM. |
 | `src/audio/` | Every sound, synthesised. No files, and none may be added. |
 | `src/reactions.js` | Where a sim event becomes presentation. "What happens when a barrel dies" is one function, and every bus subscription in the game lives here bar one — `main.js` owns the end-card hook. |

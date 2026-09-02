@@ -34,6 +34,9 @@ posture carry it; ring colour only confirms.
 ```js
 w.runTime, w.distance, w.scroll, w.state           // STATE: 0 READY 1 RUNNING 2 BOSS 3 WON 4 LOST
 w.anchorX, w.anchorVelX, w.count, w.tier, w.nominalDPS
+w.mode      // MODE: 0 ADVANCE 1 HOLDOUT 2 TURRET
+w.turretX, w.turretAim, w.turretYaw, w.turretHitX, w.turretHitZ   // TURRET only: truck x,
+            //   reticle x on the aim plane, the ray's yaw, where the last ray stopped
 w.soldiers  // Pool: .size, .items[i] = { x, z, slotX, slotZ, recoil, recoilVel,
             //   vx, vz, lean, phase, scale, slot, iframe }   vx/vz/lean are VIEW-OWNED
 w.zombies   // Pool: .items[i] = { x, z, hp, maxHp, kind:'walker'|'runner'|'brute',
@@ -108,6 +111,10 @@ squad sits at `z = 0`; the world scrolls toward `+Z`. Spawn horizon is `z = −7
 `position (0, 6.5, 12.4)`, `fov 62`, looking at `(anchorX*0.25 + velX*0.06, 1.0, −7.5)`.
 Lateral follow is **PARTIAL (0.50) with a 0.20s lag** — at 1:1 the squad is pinned to
 screen centre and the drag reads as dead even at zero latency.
+
+**TURRET mode** swaps the pose for `CFG.turret.camera`: high and close behind the gun,
+pitched ~27°, wider fov, riding the truck (`w.turretX`) with a shallow pan toward the aim.
+No growth dolly and no counter-roll — the camera is bolted to a vehicle.
 
 ## Draw call budget
 

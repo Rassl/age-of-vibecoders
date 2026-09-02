@@ -40,3 +40,17 @@ export const WEAPONS = [
 ]
 
 export const MAX_TIER = WEAPONS.length - 1
+
+/**
+ * The mounted gun of TURRET mode. NOT a tier: nothing upgrades into it and no
+ * soldier carries it, so it stays out of WEAPONS where every length-derived
+ * clamp (grade, HUD name, gun geometry swap) would otherwise pick it up. It
+ * borrows the tier index one past the roster so the tracer and audio tables
+ * can key on it exactly the way they key on a weapon.
+ */
+export const TURRET_TIER = WEAPONS.length
+export const TURRET = {
+  id: 'turret', name: 'TURRET', tracerColor: 0xff7a55, muzzleColor: 0xffc0a0,
+  tracerWidth: 1.05, tracerLen: 1.25, casings: false,
+  shotGain: 0.40, shotHz: 380, spin: 30,
+}

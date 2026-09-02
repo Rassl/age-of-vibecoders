@@ -21,6 +21,16 @@ let nextId = 1
 
 export const STATE = { READY: 0, RUNNING: 1, BOSS: 2, WON: 3, LOST: 4 }
 
+/**
+ * Run modes. ADVANCE is the original lane-runner: the world treadmills past a
+ * marching squad. HOLDOUT plants the squad: scroll is zero, the road stands
+ * still, and the horde closes the distance on its own legs -- the director
+ * swaps the gate/barrel economy for timed reinforcements (director.js).
+ * TURRET keeps the treadmill but hands the drag to a mounted gun behind the
+ * squad; the squad steers itself (autopilot.js) and the player aims.
+ */
+export const MODE = { ADVANCE: 0, HOLDOUT: 1, TURRET: 2 }
+
 function makeSoldier() {
   return {
     id: nextId++, gen: 0, dead: false,
@@ -93,6 +103,7 @@ export function createWorld(seed = 1337) {
   return {
     // --- run scalars ---
     state: STATE.READY,
+    mode: MODE.ADVANCE,
     runTime: 0,
     distance: 0,
     scroll: CFG.world.scrollStart,
@@ -110,6 +121,24 @@ export function createWorld(seed = 1337) {
     // any step has run (the world sits in READY behind the start card).
     prevAnchorX: 0,
     prevDistance: 0,
+
+    // --- turret (MODE.TURRET) ---
+    // The reticle's x on the CFG.turret.aimZ plane: raw is where the finger put
+    // it, smooth is what the gun tracks. yaw is derived from smooth each step
+    // and read by both the ray cast and the view, so they can never disagree.
+    turretAimRaw: 0,
+    turretAim: 0,
+    // The truck's x: a lagged partial follow of the squad (steer.js).
+    turretX: 0,
+    turretYaw: 0,
+    turretFireTimer: 0,
+    turretShots: 0,
+    // Where the last turret ray stopped; the laser sight is drawn to it.
+    turretHitX: 0,
+    turretHitZ: 0,
+    // The self-driving squad's lane memory (autopilot.js). Same shape as the
+    // harness bot's memo so the two share one policy.
+    auto: { cooldown: 0, target: 0, rowId: -1, x: 0 },
 
     // --- squad ---
     count: 0,
@@ -192,6 +221,19 @@ export function resetWorld(w, seed = w.seed) {
   w.prevAnchorX = 0
   w.prevDistance = 0
 
+  w.turretAimRaw = 0
+  w.turretAim = 0
+  w.turretX = 0
+  w.turretYaw = 0
+  w.turretFireTimer = 0
+  w.turretShots = 0
+  w.turretHitX = 0
+  w.turretHitZ = -CFG.world.spawnHorizon
+  w.auto.cooldown = 0
+  w.auto.target = 0
+  w.auto.rowId = -1
+  w.auto.x = 0
+
   w.count = 0
   w.tier = CFG.weapons.startTier
   w.nominalDPS = 0
@@ -227,7 +269,7 @@ export function resetWorld(w, seed = w.seed) {
   w.beatCursor = 0
   w.gateCursor = 0
   w.sweepCursor = 0
-  w.spawnCredit = 0
+  w.spawnCredit = CFG.threat.startCredit
   w.lastBeatT = -1
   return w
 }

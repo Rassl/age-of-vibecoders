@@ -1,12 +1,13 @@
 /** Run lifecycle helpers shared by the game and the headless harness. */
 import { CFG } from '../config.js'
-import { resetWorld, STATE } from './world.js'
+import { resetWorld, STATE, MODE } from './world.js'
 import { spawnSoldier, reassignSlots } from './roster.js'
 import { spawnDrone } from './drones.js'
 import { squadDPS } from '../curves.js'
 
-export function startRun(w, seed = w.seed) {
+export function startRun(w, seed = w.seed, mode = MODE.ADVANCE) {
   resetWorld(w, seed)
+  w.mode = mode
   for (let i = 0; i < CFG.squad.startCount; i++) {
     spawnSoldier(w, (w.rng.next() - 0.5) * 0.6, (w.rng.next() - 0.5) * 0.6)
   }

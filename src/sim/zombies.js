@@ -10,6 +10,7 @@ import { clamp } from '../util/math.js'
 import { bus, T } from '../core/bus.js'
 import { queueRemove, CAUSE } from './roster.js'
 import { queueDamage } from './combat.js'
+import { MODE } from './world.js'
 
 export function spawnZombie(w, kind, x, z) {
   const z0 = w.zombies.acquire()
@@ -21,7 +22,9 @@ export function spawnZombie(w, kind, x, z) {
   z0.z = z
   z0.maxHp = zombieHP(w.runTime, kind)
   z0.hp = z0.maxHp
-  z0.speed = e.speed
+  // In holdout there is no scroll under the horde, so their own legs carry the
+  // whole approach; the boost keeps pressure at the squad near advance-mode.
+  z0.speed = e.speed * (w.mode === MODE.HOLDOUT ? CFG.holdout.speedMult : 1)
   z0.radius = e.radius
   z0.kills = e.kills
   z0.scale = e.scale

@@ -16,7 +16,7 @@
  * cosmetic draw from the sim's stream desynchronises replay and the headless harness.
  */
 import { CFG } from '../config.js'
-import { WEAPONS } from '../data/weapons.js'
+import { WEAPONS, TURRET, TURRET_TIER } from '../data/weapons.js'
 import { clamp, damp } from '../util/math.js'
 
 // Compressor first, always: 20+ soldiers firing into a bare gain node clips on frame one.
@@ -320,7 +320,9 @@ export function createAudio() {
   // ------------------------------------------------------------------ synthesis
 
   function shotVoice(tier, x) {
-    const w = WEAPONS[clamp(tier | 0, 0, WEAPONS.length - 1)]
+    // The turret is not a tier, so it names itself: TURRET_TIER selects its
+    // own row and every other index clamps into the squad's roster.
+    const w = tier === TURRET_TIER ? TURRET : WEAPONS[clamp(tier | 0, 0, WEAPONS.length - 1)]
     const hz = w.shotHz
     // Lower shotHz => darker band and a longer tail (shotgun); higher => tight and
     // clicky (minigun). The tier is audible before the level is.

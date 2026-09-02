@@ -16,7 +16,15 @@ import { parSquad } from '../curves.js'
 import { WEAPONS } from '../data/weapons.js'
 import { clamp } from '../util/math.js'
 
-const INSTRUCTION = 'DRAG TO MOVE — YOUR SQUAD FIRES ITSELF'
+// Indexed by run mode (sim/world.js MODE: 0 advance, 1 holdout, 2 turret).
+// The mode never changes mid-run, so these are the only two strings a card
+// ever rewrites for it.
+const INSTRUCTION = [
+  'DRAG TO MOVE — YOUR SQUAD FIRES ITSELF',
+  'DRAG TO MOVE — HOLD THE LINE',
+  'DRAG TO AIM — YOUR SQUAD MOVES ITSELF',
+]
+const MODE_TAG = ['', 'HOLD THE LINE', 'MAN THE GUN']
 const ARM_MS = 380   // see armedAt
 
 const GRADES = ['F', 'D', 'C', 'B', 'A', 'S']
@@ -129,7 +137,7 @@ export function createOverlay(root, onStart, onRestart) {
   div('aov-title', startCard, 'AGE OF VIBECODERS')
   div('aov-rule', startCard)
   const startRound = div('aov-round', startCard)
-  div('aov-line', startCard, INSTRUCTION)
+  const startLine = div('aov-line', startCard, INSTRUCTION[0])
   div('aov-tap', startCard, 'TAP TO DEPLOY')
 
   // --- end card, built once: showEnd() only rewrites text nodes, so a restart
@@ -151,15 +159,27 @@ export function createOverlay(root, onStart, onRestart) {
   let mode = 0            // 0 none, 1 start, 2 end
   let armedAt = 0
   let round = 1
+  let runMode = 0         // sim MODE of the round being announced
 
   /**
    * NG+ round for the cards. Round 1 renders nothing anywhere -- a badge
    * saying "ROUND 1" on a first launch is noise, and the mechanic should be
    * discovered by winning, not announced up front.
+   *
+   * @param {number} r         round number
+   * @param {number} [m]       sim run mode (0 advance, 1 holdout, 2 turret)
    */
-  function setRound(r) {
+  function setRound(r, m) {
     round = r
-    startRound.textContent = round > 1 ? `ROUND ${round} \u2022 +${Math.round((CFG.difficulty - 1) * 100)}% THREAT` : ''
+    runMode = clamp(m | 0, 0, MODE_TAG.length - 1)
+    const tag = MODE_TAG[runMode]
+    // Round 1 stays quiet, but a mode is announced even there -- "the squad
+    // does not advance" or "you have the gun" is a rule change, not a
+    // difficulty knob, and the instruction line changes with it.
+    startRound.textContent = round > 1
+      ? `ROUND ${round} \u2022 +${Math.round((CFG.difficulty - 1) * 100)}% THREAT${tag ? ' \u2022 ' + tag : ''}`
+      : tag
+    startLine.textContent = INSTRUCTION[runMode]
   }
 
   function show(next) {
@@ -191,7 +211,10 @@ export function createOverlay(root, onStart, onRestart) {
     vals[4].textContent = WEAPONS[clamp(w.tier, 0, WEAPONS.length - 1)].name
     // main.js advances the round on a win BEFORE this card shows, so `round`
     // is already the next one; a loss replays the same round and says nothing.
-    endRound.textContent = won ? `NEXT: ROUND ${round}` : ''
+    const tag = MODE_TAG[runMode]
+    endRound.textContent = won
+      ? `NEXT: ROUND ${round}${tag ? ' • ' + tag : ''}`
+      : ''
     show(2)
   }
 

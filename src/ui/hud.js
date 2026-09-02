@@ -99,6 +99,11 @@ const CSS = `
   text-shadow:0 2px 0 rgba(0,0,0,.45),0 0 24px rgba(0,0,0,.6);}
 .aov-count-cap{margin-top:3px;font-size:9px;letter-spacing:.42em;
   text-indent:.42em;color:rgba(224,201,160,.5);}
+/* TURRET mode: the gun owns the bottom of the frame, so the count moves to
+   the top-left corner, smaller. The thumb's band is the whole screen there. */
+.aov-hud.turret .aov-count{bottom:auto;right:auto;left:14px;text-align:left;
+  top:calc(env(safe-area-inset-top,0px) + 44px);}
+.aov-hud.turret .aov-count-n{font-size:clamp(30px,8vw,44px);transform-origin:0 60%;}
 `
 
 function injectStyle() {
@@ -214,6 +219,10 @@ export function createHud(root) {
   gate.appendChild(rageSvg)
 
   const rGate = track(gate)
+  // A second tracker on the same element: `track` caches one flag per record,
+  // and the gate already spends its on nothing, but keeping the mode class on
+  // its own record means a future flag on the gate cannot fight it.
+  const rGateMode = track(gate)
   const rVig = track(vig)
   const rBar = track(bar)
   const rFill = track(fill)
@@ -296,6 +305,7 @@ export function createHud(root) {
 
     // ---- WRITES ONLY BELOW. Nothing here reads back from the DOM. ----------
     writeOpacity(rGate, live ? 1 : 0)
+    writeFlag(rGateMode, w.mode === 2 ? 1 : 0, 'turret')
     writeOpacity(rVig, q100(vigA))
 
     writeFlag(rBar, bossOn ? 1 : 0, 'boss')
@@ -305,8 +315,16 @@ export function createHud(root) {
 
     // Metres travelled, as in the reference. Quantised to 1m so the readout is a
     // steady tick rather than a blur -- at ~16u/s an unquantised value repaints
-    // every frame and is unreadable.
-    writeNum(rDist, Math.round(w.distance) + ' m')
+    // every frame and is unreadable. HOLDOUT (mode 1) has no distance -- the
+    // squad is planted -- so the same slot counts down the time left to hold.
+    if (w.mode === 1) {
+      const left = Math.max(0, Math.ceil(CFG.world.runSeconds - w.runTime))
+      writeNum(rDist, w.state >= 2
+        ? 'HOLD'
+        : 'HOLD ' + ((left / 60) | 0) + ':' + String(left % 60).padStart(2, '0'))
+    } else {
+      writeNum(rDist, Math.round(w.distance) + ' m')
+    }
 
     writeText(rWep, wepName)
     writeOpacity(rWep, q100(wepOp))

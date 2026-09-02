@@ -23,9 +23,15 @@ import { Euler, Quaternion } from 'three'
 import { CFG } from '../config.js'
 import { approach, clamp, damp, lerp, remap } from '../util/math.js'
 
-// Mirrors STATE.BOSS in sim/world.js. Copied rather than imported: the view
-// layer reads sim DATA passed in as `w` and never imports from sim/.
+// Mirrors STATE.BOSS and MODE.TURRET in sim/world.js. Copied rather than
+// imported: the view layer reads sim DATA passed in as `w` and never imports
+// from sim/.
 const STATE_BOSS = 2
+const MODE_TURRET = 2
+
+// TURRET mode: the camera parks behind the gun and pans with the aim. The
+// aim is already low-passed in the sim; this is only the pan's own lag.
+const TURRET_PAN_TAU = 0.14
 
 const ROLL_CLAMP = 0.05          // rad; roll saturates fast and is meant to
 const VEL_TAU = 0.05             // s; see the smoothing note in sync()
@@ -84,6 +90,7 @@ export function createCameraRig(camera) {
      */
     sync(w, rawDt, scaledDt, alpha) {
       const c = CFG.camera
+      const turret = w.mode === MODE_TURRET
 
       // ---- RENDER dt: pose --------------------------------------------------
 
@@ -92,32 +99,58 @@ export function createCameraRig(camera) {
       // substep, and the roll is sensitive enough that the smoothing stays.
       velSmooth = damp(velSmooth, w.anchorVelX, smoothingFor(VEL_TAU), rawDt)
 
-      camX = damp(camX, w.anchorX * c.followFactor, smoothingFor(c.followTau), rawDt)
-
       bossBlend = damp(bossBlend, w.state === STATE_BOSS ? 1 : 0, smoothingFor(BOSS_BLEND_TAU), rawDt)
 
-      // Growth dolly: pull back so 40 soldiers stay framed. The cap matters more
-      // than the gain -- uncapped, a big squad earns a wide establishing shot of
-      // the boss, and the finale's entire read is that it is too big for the frame.
-      // During the boss the dolly is OVERRIDDEN inward for the same reason.
-      const grown = c.basePos[2] + c.dollyGain * Math.log2(Math.max(1, w.count) / CFG.squad.startCount)
-      const dollyTarget = lerp(
-        clamp(grown, c.basePos[2], c.dollyMaxZ),
-        c.basePos[2] - BOSS_PUNCH_Z,
-        bossBlend,
-      )
-      dollyZ = damp(dollyZ, dollyTarget, Math.exp(-c.dollyOmega), rawDt)
+      let camY, lookX, lookY, lookZ, baseFov, roll
 
-      // Rise along the line through the look point, so pulling back changes the
-      // framing WIDTH and never the pitch. Recomputed from CFG so retuning the
-      // base pose cannot silently tilt the whole dolly range.
-      const pitchSlope = (c.basePos[1] - c.lookY) / (c.basePos[2] - c.lookZ)
-      const camY = c.lookY + pitchSlope * (dollyZ - c.lookZ)
+      if (turret) {
+        // Behind the gun, fixed height, no growth dolly: the squad is not the
+        // subject here, the road is. The pan follows the AIM, not the squad,
+        // so the world slides under the gun as the reticle sweeps -- which is
+        // the one on-screen motion that makes the drag read as steering
+        // something heavy. No counter-roll: the camera is bolted to a truck.
+        const tc = CFG.turret.camera
+        // Rides the truck (w.turretX already trails the squad with a vehicle's
+        // lag), plus a shallow pan toward the aim.
+        camX = damp(camX, w.turretX + w.turretAim * tc.posXFactor, smoothingFor(TURRET_PAN_TAU), rawDt)
+        dollyZ = damp(dollyZ, tc.pos[2], Math.exp(-c.dollyOmega), rawDt)
+        camY = tc.pos[1]
+        lookX = w.turretX + w.turretAim * tc.lookXFactor
+        lookY = lerp(tc.lookY, BOSS_LOOK_Y, bossBlend)
+        lookZ = tc.lookZ
+        baseFov = tc.fov
+        roll = 0
+      } else {
+        camX = damp(camX, w.anchorX * c.followFactor, smoothingFor(c.followTau), rawDt)
 
-      // The look target does NOT lag; only the position does. That difference is
-      // what lets the squad slide off centre under a fast drag and settle back.
-      const lookX = w.anchorX * c.lookXFactor + velSmooth * c.lookVelFactor
-      const lookY = lerp(c.lookY, BOSS_LOOK_Y, bossBlend)
+        // Growth dolly: pull back so 40 soldiers stay framed. The cap matters more
+        // than the gain -- uncapped, a big squad earns a wide establishing shot of
+        // the boss, and the finale's entire read is that it is too big for the frame.
+        // During the boss the dolly is OVERRIDDEN inward for the same reason.
+        const grown = c.basePos[2] + c.dollyGain * Math.log2(Math.max(1, w.count) / CFG.squad.startCount)
+        const dollyTarget = lerp(
+          clamp(grown, c.basePos[2], c.dollyMaxZ),
+          c.basePos[2] - BOSS_PUNCH_Z,
+          bossBlend,
+        )
+        dollyZ = damp(dollyZ, dollyTarget, Math.exp(-c.dollyOmega), rawDt)
+
+        // Rise along the line through the look point, so pulling back changes the
+        // framing WIDTH and never the pitch. Recomputed from CFG so retuning the
+        // base pose cannot silently tilt the whole dolly range.
+        const pitchSlope = (c.basePos[1] - c.lookY) / (c.basePos[2] - c.lookZ)
+        camY = c.lookY + pitchSlope * (dollyZ - c.lookZ)
+
+        // The look target does NOT lag; only the position does. That difference is
+        // what lets the squad slide off centre under a fast drag and settle back.
+        lookX = w.anchorX * c.lookXFactor + velSmooth * c.lookVelFactor
+        lookY = lerp(c.lookY, BOSS_LOOK_Y, bossBlend)
+        lookZ = c.lookZ
+        baseFov = c.fov
+        // Counter-roll on lateral velocity. One clamped float, and it is most of
+        // why the drag reads as a physical body being thrown around a corner.
+        roll = clamp(-velSmooth * c.rollGain, -ROLL_CLAMP, ROLL_CLAMP)
+      }
 
       // ---- SCALED dt: impact ------------------------------------------------
       trauma = approach(trauma, 0, c.traumaDecay * scaledDt)
@@ -126,11 +159,8 @@ export function createCameraRig(camera) {
 
       // ---- one composed write ----------------------------------------------
       camera.position.set(camX, camY, dollyZ)
-      camera.lookAt(lookX, lookY, c.lookZ)
+      camera.lookAt(lookX, lookY, lookZ)
 
-      // Counter-roll on lateral velocity. One clamped float, and it is most of
-      // why the drag reads as a physical body being thrown around a corner.
-      let roll = clamp(-velSmooth * c.rollGain, -ROLL_CLAMP, ROLL_CLAMP)
       let yaw = 0
       let pitch = 0
 
@@ -153,7 +183,7 @@ export function createCameraRig(camera) {
       _quat.setFromEuler(_euler)
       camera.quaternion.multiply(_quat)
 
-      const fov = c.fov
+      const fov = baseFov
         + remap(w.scroll, CFG.world.scrollStart, CFG.world.scrollEnd, 0, c.fovSpeedKick)
         + fovPunch
       if (Math.abs(camera.fov - fov) > 1e-3) {
@@ -182,12 +212,15 @@ export function createCameraRig(camera) {
     /**
      * Instant restart. Allocation-free, and it snaps the pose rather than damping
      * to it -- a spring left holding its old value whip-pans across the corridor
-     * on the first frame of the new run.
+     * on the first frame of the new run. Pass the world so a TURRET round snaps
+     * to the gun pose instead of dollying in from the corridor one.
      */
-    reset() {
+    reset(w) {
       const c = CFG.camera
+      const turret = !!w && w.mode === MODE_TURRET
+      const tc = CFG.turret.camera
       camX = 0
-      dollyZ = c.basePos[2]
+      dollyZ = turret ? tc.pos[2] : c.basePos[2]
       velSmooth = 0
       bossBlend = 0
       trauma = 0
@@ -195,12 +228,17 @@ export function createCameraRig(camera) {
       fovPunch = 0
 
       camera.up.set(0, 1, 0)
-      camera.fov = c.fov
+      camera.fov = turret ? tc.fov : c.fov
       camera.near = c.near
       camera.far = c.far
       camera.updateProjectionMatrix()
-      camera.position.set(c.basePos[0], c.basePos[1], c.basePos[2])
-      camera.lookAt(0, c.lookY, c.lookZ)
+      if (turret) {
+        camera.position.set(tc.pos[0], tc.pos[1], tc.pos[2])
+        camera.lookAt(0, tc.lookY, tc.lookZ)
+      } else {
+        camera.position.set(c.basePos[0], c.basePos[1], c.basePos[2])
+        camera.lookAt(0, c.lookY, c.lookZ)
+      }
       camera.updateMatrixWorld()
     },
 

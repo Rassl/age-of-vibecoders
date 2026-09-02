@@ -11,7 +11,7 @@ import { CFG, deriveConfig, validateConfig } from './config.js'
 import { Loop } from './core/loop.js'
 import { Input } from './core/input.js'
 import { bus, T } from './core/bus.js'
-import { createWorld, STATE } from './sim/world.js'
+import { createWorld, STATE, MODE } from './sim/world.js'
 import { startRun } from './sim/run.js'
 import { runStep } from './sim/systems.js'
 import { applyInterpolation, restoreInterpolation } from './sim/interpolate.js'
@@ -24,6 +24,7 @@ import { createGlyphAtlas } from './view/atlas.js'
 import { createProps } from './view/props.js'
 import { createGates } from './view/gates.js'
 import { createDrones } from './view/drones.js'
+import { createTurret } from './view/turret.js'
 import { createTracers } from './fx/tracers.js'
 import { createParticles } from './fx/particles.js'
 import { createRings } from './fx/rings.js'
@@ -78,6 +79,7 @@ const characters = createCharacters(scene)
 const props = createProps(scene, atlas)
 const gates = createGates(scene, atlas)
 const drones = createDrones(scene)
+const turret = createTurret(scene)
 // particles BEFORE tracers: the muzzle-smoke wisp is a dependency, not a lookup.
 const particles = createParticles(scene)
 const tracers = createTracers(scene, { particles })
@@ -145,15 +147,41 @@ function loadRound() {
 
 let round = loadRound()
 
+/**
+ * The round cycles the run mode: ADVANCE down the corridor (the original
+ * game), then HOLD the line -- the squad plants, the road stops, and the
+ * horde walks in -- then MAN THE GUN: the drag aims a mounted turret and the
+ * squad drives itself (sim/world.js MODE, director.js, sim/autopilot.js).
+ *
+ * `?mode=advance|hold|turret` pins a mode for the session regardless of
+ * round, so any of the three can be played or tested without winning two
+ * rounds first. Difficulty still follows the round.
+ */
+const MODE_CYCLE = [MODE.ADVANCE, MODE.HOLDOUT, MODE.TURRET]
+const MODE_NAME = ['ADVANCE', 'HOLD', 'TURRET']
+const MODE_PARAM = { advance: MODE.ADVANCE, hold: MODE.HOLDOUT, holdout: MODE.HOLDOUT, turret: MODE.TURRET }
+
+function forcedMode() {
+  try {
+    const m = new URLSearchParams(location.search).get('mode')
+    return m && MODE_PARAM[m.toLowerCase()] !== undefined ? MODE_PARAM[m.toLowerCase()] : -1
+  } catch { return -1 }
+}
+
+function roundMode() {
+  const forced = forcedMode()
+  return forced >= 0 ? forced : MODE_CYCLE[(round - 1) % MODE_CYCLE.length]
+}
+
 function applyRound() {
   CFG.difficulty = 1 + DIFFICULTY_PER_ROUND * (round - 1)
-  overlay.setRound(round)
+  overlay.setRound(round, roundMode())
 }
 applyRound()
 
 const loop = new Loop(step, render, beforeStep)
 
-wireReactions({ loop, camera: cameraRig, particles, tracers, rings, hud, audio, world, blasts })
+wireReactions({ loop, camera: cameraRig, particles, tracers, rings, hud, audio, world, blasts, turret })
 
 let endCardTimer = 0
 let runGeneration = 0
@@ -209,17 +237,18 @@ function restart() {
     pauseBtn.set(false)
     loop.start()
   }
-  startRun(world, (Math.random() * 0x7fffffff) | 0)
+  startRun(world, (Math.random() * 0x7fffffff) | 0, roundMode())
   bus.clear()
   loop.clearHitstop()
   loop.resync()
   input.reset()
   corridor.reset()
-  cameraRig.reset()
+  cameraRig.reset(world)
   characters.reset()
   props.reset()
   gates.reset()
   drones.reset()
+  turret.reset()
   tracers.reset()
   particles.reset()
   rings.reset()
@@ -290,6 +319,7 @@ function render(rawDt, scaledDt, alpha, frameMs) {
   props.sync(world, rawDt, camera)
   gates.sync(world, rawDt, camera)
   drones.sync(world, rawDt)
+  turret.sync(world, rawDt)
   rings.sync(world, rawDt)
   melons.sync(world)
   decals.sync(world, rawDt)
@@ -420,16 +450,39 @@ function prewarmShaders() {
   }
 }
 
-startRun(world, world.seed)
+startRun(world, world.seed, roundMode())
 // The loop runs so the corridor renders behind the start card, but the sim is
 // held in READY -- otherwise an unplayed attract run ticks at full speed and can
 // reach zero soldiers, replacing the start card with a game-over card.
 world.state = STATE.READY
+// The attract frame must already sit behind the right camera: a turret round
+// that opened on the corridor pose would dolly across the road on deploy.
+cameraRig.reset(world)
 prewarmShaders()
 overlay.showStart()
 loop.start()
 
 if (import.meta.env && import.meta.env.DEV) {
+  // Dev-only round/mode switcher (bottom-left). Dynamic import inside this
+  // statically-false-in-prod guard, so the module never reaches the build.
+  import('./ui/devlevel.js').then(({ createDevLevel }) => {
+    createDevLevel({
+      round: () => round,
+      label: () => `R${round} · ${MODE_NAME[roundMode()]}`,
+      set(r) {
+        round = Math.max(1, Math.min(99, r))
+        try { localStorage.setItem(ROUND_KEY, String(round)) } catch { /* best-effort */ }
+        applyRound()
+        // Mid-run (or on an end card): hot-restart straight into the new
+        // round. On the title card, just retag it -- deploy stays a tap.
+        if (world.state !== STATE.READY) {
+          overlay.hide()
+          restart()
+        }
+      },
+    })
+  })
+
   window.__game = { world, CFG, loop, renderer, scene, camera, bus, T,
-    views: { cameraRig, corridor, characters, props, gates, drones, rings, decals, debris, projectiles, tracers, particles, damage, hud } }
+    views: { cameraRig, corridor, characters, props, gates, drones, turret, rings, decals, debris, projectiles, tracers, particles, damage, hud } }
 }

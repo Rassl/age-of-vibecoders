@@ -89,6 +89,36 @@ export function steer(w, dt, dx, axis = 0) {
   w.anchorX = next
 }
 
+/**
+ * TURRET mode: the same drag, pointed at the gun instead of the squad.
+ *
+ * The reticle is a point on the CFG.turret.aimZ plane. The drag arrives in
+ * corridor units at the squad plane (Input converts pixels once, for both
+ * modes), and is rescaled here so the finger travel that crosses the corridor
+ * in ADVANCE sweeps the reticle rail to rail at the aim plane in TURRET. The
+ * yaw is derived from the smoothed aim and stored on the world, so the ray
+ * cast (combat.fireTurret) and the gun mesh (view/turret.js) read ONE angle.
+ *
+ * Deliberately no velocity model: a gun on a pivot is a direct manipulation,
+ * and every millisecond between the finger and the beam reads as sluggish.
+ * The low-pass is digitizer jitter only.
+ */
+export function steerTurret(w, dt, dx, axis = 0) {
+  const t = CFG.turret
+  const gain = t.aimClampX / CFG.world.clampX
+  let raw = w.turretAimRaw + dx * gain + axis * t.aimSpeed * dt
+  w.turretAimRaw = clamp(raw, -t.aimClampX, t.aimClampX)
+  const k = 1 - Math.exp(-dt / Math.max(1e-4, t.aimTau))
+  w.turretAim += (w.turretAimRaw - w.turretAim) * k
+  // The truck trails the squad (last substep's anchor: this runs before
+  // steer(), and one step of lag is nothing against the vehicle's own).
+  const kf = 1 - Math.exp(-dt / Math.max(1e-4, t.followTau))
+  w.turretX += (w.anchorX * t.follow - w.turretX) * kf
+  // Positive yaw = aiming right (+x). The view negates it for three's
+  // right-handed rotation about +Y.
+  w.turretYaw = Math.atan2(w.turretAim - w.turretX, t.z - t.aimZ)
+}
+
 /** Gameplay soldier positions: effectively instant. Visual lag lives in the view. */
 export function resolveSquadPositions(w) {
   const items = w.soldiers.items

@@ -597,6 +597,10 @@ export function createCharacters(scene) {
   const barQuat = new Quaternion()
   let clock = 0
   let dissolve = 0
+  // HOLDOUT (w.mode === 1, mirrored from sim/world.js MODE like STATE_LOST):
+  // the squad is planted, so the march gait only comes up while it strafes --
+  // a still squad idles instead of jogging in place on a frozen road.
+  let holdGait = 1
   let bossRage = 0
   let bossFall = 0
   let tier = -1
@@ -740,12 +744,13 @@ export function createCharacters(scene) {
       const phase = gait + s.phase * TAU
       const v = 0.90 + (s.scale - 0.96) * 2
       const fl = s.iframe > 0 ? 0.55 * (s.iframe / iframe) : 0
-      put(soldiers, i, phase, fl, drive, 1 - dissolve, v, v, v)
+      const g = (1 - dissolve) * holdGait
+      put(soldiers, i, phase, fl, drive, g, v, v, v)
 
       // The weapon IS the same body: same matrix, same index space, same phase,
       // same drive -- which is why it can never slide out of the hand.
       guns.mesh.setMatrixAt(i, _mtx)
-      put(guns, i, phase, fl, drive, 1 - dissolve, 1, 1, 1)
+      put(guns, i, phase, fl, drive, g, 1, 1, 1)
     }
     commit(soldiers, n)
 
@@ -1002,6 +1007,9 @@ export function createCharacters(scene) {
       // swap-remove, and the pool guarantees it will not.
       const target = w.state === STATE_LOST ? 1 : 0
       dissolve += (target - dissolve) * (1 - Math.exp(-dt / 0.45))
+
+      const gaitTarget = w.mode === 1 ? clamp(Math.abs(w.anchorVelX) * 0.55, 0, 1) : 1
+      holdGait += (gaitTarget - holdGait) * (1 - Math.exp(-dt / 0.18))
       if (camera && camera.isCamera) barQuat.copy(camera.quaternion)
 
       const nS = syncSoldiers(w, dt, step)
@@ -1015,6 +1023,7 @@ export function createCharacters(scene) {
     reset() {
       clock = 0
       dissolve = 0
+      holdGait = 1
       bossRage = 0
       bossFall = 0
       spin = 0

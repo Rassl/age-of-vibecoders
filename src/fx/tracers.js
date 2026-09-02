@@ -51,7 +51,7 @@ import {
   Vector3,
 } from 'three'
 import { CFG } from '../config.js'
-import { WEAPONS } from '../data/weapons.js'
+import { WEAPONS, TURRET, TURRET_TIER } from '../data/weapons.js'
 import { Pool } from '../util/pool.js'
 import { Rng } from '../util/rng.js'
 import { clamp, damp, lerp } from '../util/math.js'
@@ -156,23 +156,35 @@ const LOOK = {
     smoke: 0, casing: 0, casingSize: 0,
     tracer: 0xfff2c8, muzzle: 0xffffff,
   },
+  turret: {
+    // The mounted gun of TURRET mode. Hot and long: it is the one stream in
+    // the scene that leaves at an angle, and it has to read as the player's
+    // own line against the squad's parallel amber. Casings would eject into
+    // the camera, so none.
+    pellets: 1, divergeX: 0, divergeY: 0, span: 1.25, speed: 1.55, width: 1.05,
+    coreK: 1.25, glowK: 0.34, glowW: 4.2,
+    flashSize: 0.95, flashAspect: 1.20, flashGain: 3.2, flashLife: 0.85,
+    smoke: 0.12, casing: 0, casingSize: 0,
+    tracer: 0xff7a55, muzzle: 0xffc0a0,
+  },
 }
 const LOOK_DEFAULT = LOOK.rifle
 
 /**
- * Flatten the profile table against the live WEAPONS roster ONCE. Doing this per
- * spawn would mean ~200 sRGB->linear conversions a second for five distinct
- * answers, and would put the WEAPONS table on the hot path. Any id the table
- * does not know resolves to the rifle profile rather than throwing, so adding a
- * sixth tier degrades to "looks like a rifle" instead of a black screen.
+ * Flatten the profile table against the live WEAPONS roster ONCE, plus one
+ * extra row for the turret at TURRET_TIER. Doing this per spawn would mean
+ * ~200 sRGB->linear conversions a second for six distinct answers, and would
+ * put the WEAPONS table on the hot path. Any id the table does not know
+ * resolves to the rifle profile rather than throwing, so adding a tier
+ * degrades to "looks like a rifle" instead of a black screen.
  */
-const N_TIER = WEAPONS.length
+const N_TIER = WEAPONS.length + 1
 const MAX_TIER_INDEX = N_TIER - 1
 const P = []
 const TRACER_RGB = new Float32Array(N_TIER * 3)
 const MUZZLE_RGB = new Float32Array(N_TIER * 3)
 for (let i = 0; i < N_TIER; i++) {
-  const wep = WEAPONS[i]
+  const wep = i === TURRET_TIER ? TURRET : WEAPONS[i]
   const look = LOOK[wep.id] || LOOK_DEFAULT
   P.push(look)
   // The data table owns the hue when it declares one; the profile is the
@@ -194,7 +206,7 @@ const TRACER_WIDTH = new Float32Array(N_TIER)
 const SPAN_MULT = new Float32Array(N_TIER)
 const CASING_P = new Float32Array(N_TIER)
 for (let i = 0; i < N_TIER; i++) {
-  const wep = WEAPONS[i]
+  const wep = i === TURRET_TIER ? TURRET : WEAPONS[i]
   const look = P[i]
   TRACER_WIDTH[i] = typeof wep.tracerWidth === 'number' && wep.tracerWidth > 0 ? wep.tracerWidth : 1
   SPAN_MULT[i] = typeof wep.tracerLen === 'number' && wep.tracerLen > 0 ? wep.tracerLen : look.span
@@ -406,7 +418,8 @@ export function createTracers(scene, deps) {
     // THICKEN, don't multiply. Instance count is what costs fill rate at this
     // overdraw, so a 40-soldier squad gets a fatter river, not 40 more streaks.
     spawnWidth = lerp(wep.tracerThin, wep.tracerThick, clamp(w.count / wep.tracerThinCount, 0, 1))
-    spawnTier = clamp(w.tier | 0, 0, MAX_TIER_INDEX)
+    // The squad's tier only: the turret names its own look on every event.
+    spawnTier = clamp(w.tier | 0, 0, WEAPONS.length - 1)
     scroll = w.scroll
 
     // Raw instances-per-frame is violently spiky (fire timers cluster on the
@@ -579,9 +592,12 @@ export function createTracers(scene, deps) {
    * most-cited reason the firing read as thin.
    *
    * @param {number} endZ the z the shot resolved against (w.lastHitZ)
-   * @param {number} tier weapon tier at the moment of the shot
+   * @param {number} tier weapon tier at the moment of the shot (TURRET_TIER for the gun)
+   * @param {number} [rake] lateral drift per unit of -z travel: 0 for every
+   *   soldier, tan(yaw) for the turret. The streak stays a straight segment
+   *   because divergence is applied at its centre (see sync).
    */
-  function spawnTracer(x, y, z, endZ, tier) {
+  function spawnTracer(x, y, z, endZ, tier, rake = 0) {
     shotSeq++
     // PURELY VISUAL. The sim already resolved this shot's damage; above ~200
     // instances/s the eye reads a stream and cannot count what is in it. A fixed
@@ -614,7 +630,7 @@ export function createTracers(scene, deps) {
       tr.speed = look.speed * (n > 1 ? rng.range(0.88, 1.12) : 1)
       tr.span = CORE_SPAN * SPAN_MULT[t] * (n > 1 ? rng.range(0.75, 1.25) : 1)
       tr.w = baseW * (n > 1 ? rng.range(0.8, 1.25) : 1)
-      tr.dx = fan * look.divergeX + rng.range(-1, 1) * look.divergeX * 0.35
+      tr.dx = rake + fan * look.divergeX + rng.range(-1, 1) * look.divergeX * 0.35
       tr.dy = fan * look.divergeY + rng.range(-1, 1) * look.divergeY * 0.6
       tr.coreK = look.coreK
       tr.glowK = look.glowK
@@ -625,9 +641,12 @@ export function createTracers(scene, deps) {
     }
   }
 
-  /** Flash, wisp and brass for one round. Tier comes from the last sync(). */
-  function spawnMuzzle(x, y, z) {
-    const t = spawnTier
+  /**
+   * Flash, wisp and brass for one round. Tier comes from the last sync() unless
+   * the caller names one -- the turret does, since it is not the squad's weapon.
+   */
+  function spawnMuzzle(x, y, z, tier) {
+    const t = tier === undefined ? spawnTier : clamp(tier | 0, 0, MAX_TIER_INDEX)
     const look = P[t]
 
     rollSeq = (rollSeq + GOLDEN) % 1

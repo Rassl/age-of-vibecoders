@@ -8,18 +8,19 @@
  */
 import { CFG, FIXED_DT } from '../config.js'
 import { scrollSpeed } from '../curves.js'
-import { steer, resolveSquadPositions } from './steer.js'
+import { steer, steerTurret, resolveSquadPositions } from './steer.js'
+import { autopilot } from './autopilot.js'
 import { moveZombies, moveSpits, resolveBlasts } from './zombies.js'
 import { moveJoiners } from './squad.js'
 import { updateDrones, moveBolts } from './drones.js'
 import { updateBoss, moveShockwaves, checkBossDeath } from './boss.js'
 import { rebuildTargets } from './targets.js'
-import { fire, resolveImpacts, flushDamage } from './combat.js'
+import { fire, fireTurret, resolveImpacts, flushDamage } from './combat.js'
 import { collide, collideShockwaves } from './collision.js'
 import { resolveCrossings, resolveBreaks, updateDisplayHp } from './props.js'
 import { commit } from './roster.js'
 import { direct } from './director.js'
-import { STATE } from './world.js'
+import { STATE, MODE } from './world.js'
 import { snapshot } from './interpolate.js'
 
 /** Advance run time and settle THIS step's scroll speed, once, for everyone. */
@@ -30,7 +31,9 @@ function timeSystem(w, dt) {
     w.scroll += (w.scrollTarget - w.scroll) * (1 - Math.exp(-dt / CFG.boss.entryDecel))
     if (w.scroll < 0.05) w.scroll = 0
   } else {
-    w.scroll = scrollSpeed(w.runTime)
+    // HOLDOUT: the squad is planted, so nothing treadmills -- the horde closes
+    // under its own speed (zombies.js applies the mode's speed boost).
+    w.scroll = w.mode === MODE.HOLDOUT ? 0 : scrollSpeed(w.runTime)
   }
   w.distance += w.scroll * dt
 }
@@ -44,10 +47,15 @@ function scrollSystem(w, dt) {
   const d = w.scroll * dt
   const despawn = CFG.world.despawnZ
 
+  // HOLDOUT: the road is frozen (scroll 0) but the hazard/reward lanes still
+  // close on the squad -- barrels, gates and bubbles drift in at leg-ish speed,
+  // so "everything comes to you" includes the economy, not just the horde.
+  const dProp = w.mode === MODE.HOLDOUT ? CFG.holdout.propSpeed * dt : d
+
   const ps = w.props
   for (let i = 0; i < ps.size; i++) {
     const p = ps.items[i]
-    p.z += d
+    p.z += dProp
     if (p.z > despawn) p.dead = true
   }
   const zs = w.zombies
@@ -85,13 +93,32 @@ function reapPool(pool) {
     // fresh bubble look permanently gated by a barrel that no longer exists.
     if (e.gate !== undefined) e.gate = null
     if (e.gatedBy !== undefined) e.gatedBy = null
+    // Same rule for the gate row links: a recycled slot must not keep tugging
+    // width from a row that no longer exists.
+    if (e.rowL !== undefined) e.rowL = null
+    if (e.rowR !== undefined) e.rowR = null
     pool.release(i)
   }
 }
 
+/**
+ * Who gets the drag. In TURRET mode the finger aims the gun and the squad
+ * drives itself: the pilot returns a displacement in the same units the
+ * finger would, and steer() consumes it under the same velocity model, so
+ * "the squad moves on its own" costs no second movement code path.
+ */
+function steerSystem(w, dt, dx, axis) {
+  if (w.mode === MODE.TURRET) {
+    steerTurret(w, dt, dx, axis)
+    steer(w, dt, autopilot(w, dt), 0)
+    return
+  }
+  steer(w, dt, dx, axis)
+}
+
 export const SYSTEMS = [
   { name: 'time', fn: timeSystem },
-  { name: 'steer', fn: (w, dt, dx, axis) => steer(w, dt, dx, axis) },
+  { name: 'steer', fn: steerSystem },
   { name: 'formation', fn: (w) => resolveSquadPositions(w) },
   { name: 'scroll', fn: scrollSystem },
   { name: 'zombies', fn: moveZombies },
@@ -106,6 +133,10 @@ export const SYSTEMS = [
   { name: 'boss', fn: updateBoss },
   { name: 'targets', fn: (w) => rebuildTargets(w) },
   { name: 'fire', fn: fire },
+  // Same blocker index, same ledger, same flush: a turret round and a squad
+  // round converging on one walker are settled together and its death is
+  // detected exactly once.
+  { name: 'turret', fn: fireTurret },
   { name: 'impacts', fn: (w) => resolveImpacts(w) },
   { name: 'damage', fn: (w) => flushDamage(w) },
   // A bloater's blast is queued as ordinary damage and settled by a second

@@ -165,6 +165,99 @@ export const CFG = {
     spawnCap: 44,
     clusterSpread: 2.6,
     clusterWidth: 1.5,
+    // Pre-banked spawn credit at run start: two clusters walk in on the very
+    // first director tick. Without it the demand curve (beta * dps / hp) needs
+    // ~10s to bank its first cluster and the opening reads as an empty road --
+    // the first bodies should be visible before the first barrel decision.
+    startCredit: 8,
+  },
+
+  // HOLDOUT mode (even NG+ rounds): the squad stands its ground and the horde
+  // walks in. No gates/barrels/bubbles -- reinforcements and tier-ups arrive on
+  // the par curves instead, so the boss-gate economy stays intact.
+  holdout: {
+    // Nearer than the 72u advance horizon: bodies close at leg speed (~5-16
+    // u/s boosted) instead of leg+scroll (~20u/s), and spawning at 72 would
+    // leave the road empty for the first ten seconds.
+    spawnHorizon: 46,
+    // Multiplies each kind's own speed so pressure at the squad stays close to
+    // advance mode without the treadmill's contribution.
+    speedMult: 1.8,
+    // How fast barrels, gates and bubbles close on the planted squad. Near the
+    // boosted walker's pace, so the hazard wall arrives WITH its crowd; the
+    // ~6.6s horizon-to-squad window is roomier than advance's 4.5s, which is
+    // the intended slack for a mode where you cannot outrun anything.
+    propSpeed: 11.5,
+    // Baseline bodies/s, ramping with t -- the stand-in for the pressure the
+    // treadmill's closing speed used to add on top of the leg-speed approach.
+    crowdMult: 1.0,
+    baseRate: 0.4,
+    baseRateRamp: 0.04,
+  },
+
+  // TURRET mode (every third round): the player crews a mounted gun on the
+  // truck behind the squad and AIMS it with the drag; the squad steers itself
+  // (sim/autopilot.js runs the harness bot's lane policy in-sim) and fires as
+  // always. The turret's ray is the one shot in the game that does NOT go
+  // straight down -Z: it leaves the muzzle at the gun's yaw, so the player can
+  // pick a barrel, a bubble, a spitter or a bloater in any lane.
+  turret: {
+    z: 8.2,               // the yaw pivot, behind the squad plane, in front of the camera
+    barrelLen: 2.0,       // pivot to muzzle; the ray and the flash leave from here
+    muzzleY: 1.62,
+    // The truck the gun is mounted on follows the squad across the corridor,
+    // PARTIALLY and with a vehicle's lag, so the camera behind it keeps the
+    // squad in a portrait frame whose horizontal field is only ~35 degrees.
+    // Pinned at x = 0 the squad slid off the edge every time the pilot took
+    // an outer lane. The aim point is absolute on the aim plane, so following
+    // moves the gun's yaw, never the beam's landing spot.
+    follow: 0.70,
+    followTau: 0.35,
+    // The reticle lives on a plane far down the road. The drag moves it across
+    // that plane, so the gun's yaw is atan(aim / (z - aimZ)) and one corridor
+    // width of finger travel sweeps the whole road at the distance the player
+    // is actually reading. Clamp is wider than the rails so the outer lanes
+    // can be raked from the near side.
+    aimZ: -40,
+    aimClampX: 5.6,
+    aimSpeed: 30,         // u/s at the aim plane under a held key
+    aimTau: 0.05,         // digitizer jitter only, never feel
+    // Priced against PAR dps, exactly like a drone: a fixed slice of the run's
+    // difficulty curve whether the squad is ahead of it or behind. Barrels are
+    // still priced against the squad's own nominalDPS, so the turret is pure
+    // surplus -- which is what lets a poor squad-pilot round still be won by
+    // good aim.
+    //
+    // Measured headless with a PERFECT-aim policy (reticle always on the
+    // nearest prop) at the mode's natural slot, round 3 (difficulty 1.30),
+    // three seeds: 0.75 -> 20/20 bubbles, peak ~120, the pair beat deleted;
+    // 0.50 -> 3/3 wins, 10/20 bubbles, peak 40-57, 2-4 breaches; 0.35 ->
+    // 3/6 wins; 0.25 -> 3/6. A flawless gunner should clear it with room and
+    // still have to choose lanes, so 0.50. At round 1 (difficulty 1.0, only
+    // reachable via ?mode=turret) the same policy peaks ~100: expected.
+    dpsFrac: 0.50,
+    rate: 12,
+    pierce: 1,
+    spread: 0.30,         // lateral jitter at the aim plane
+    // The self-driving squad's skill, in the bot's own aim-efficiency units:
+    // 0.82 sits between the harness's GOOD and COMPETENT tiers. The reaction
+    // cadence is the bot's too. Both live here rather than in the bot so a
+    // balance pass can retune the squad without touching tools/.
+    squadAim: 0.82,
+    squadReact: 0.20,
+    // High and close, pitched ~27 degrees: the horizon sits in the top tenth
+    // of the frame, the squad just below centre, and the barrel cluster rises
+    // out of the bottom edge with the receiver cropped -- the gun is FELT as
+    // the thing under the camera, not shown as a model. A lower camera shows
+    // LESS gun, not more, because the whole gun then sits under the frame.
+    camera: {
+      pos: [0, 6.6, 11.5],
+      lookY: 0.9,
+      lookZ: 1.0,
+      lookXFactor: 0.12,  // of the aim, so the world pans under the gun
+      posXFactor: 0.10,
+      fov: 66,
+    },
   },
 
   boss: {
@@ -282,6 +375,11 @@ export const CFG = {
     secondsPerStep: 0.30,
     maxValue: 25,
     joinerStagger: 0.05,
+    // Width tug-of-war (growGate): how fast a segment under FULL squad fire
+    // steals width from its neighbours, in u/s -- and the floor no panel is
+    // ever squeezed below, so its number stays printable and its bill visible.
+    tugPerSec: 1.1,
+    minHalfW: 0.55,
   },
 
   /**
@@ -294,14 +392,15 @@ export const CFG = {
    * off-axis turret would quietly retire the mode's whole premise.
    */
   drone: {
-    // The squad DEPLOYS with one. It was a pickup behind the expensive tolls at
-    // 27s/49s/71s, which meant a player who died early or could not break a toll
-    // never saw the feature exist at all -- reported, verbatim, as "I don't see
-    // it". A mechanic the player cannot discover is not a mechanic.
-    startCount: 1,
-    // Three, not two: one slot is now permanently occupied by the default
-    // escort, and at two a bought drone would evict nothing and simply be
-    // discarded half the time.
+    // No default escort: the drone is a PICKUP, earned from its bubble. (It
+    // once deployed with the squad to fix a discoverability complaint -- "I
+    // don't see it" -- so if drone bubbles ever move back behind expensive
+    // tolls, revisit this: a mechanic the player cannot discover is not a
+    // mechanic.)
+    startCount: 0,
+    // Room for every pickup a run can realistically hold at once; sized when a
+    // permanent default escort occupied one slot, and left alone so stacking
+    // drone bubbles stays rewarding.
     maxActive: 3,
     // A TIMED pickup cannot be balanced against a permanent one at short
     // duration. A soldiers bubble pays ~6 bodies that then fight for the rest of
@@ -310,9 +409,9 @@ export const CFG = {
     // Long enough to matter, still short enough that the off-axis exception is
     // an interlude rather than the new normal.
     lifetime: 38,
-    // The starting drone never expires. A default escort that vanishes 38s in
-    // and does not come back reproduces the exact complaint it was added to fix;
-    // pickup drones stay timed on top of it.
+    // Only meaningful while startCount > 0: a default escort, if one ships,
+    // never expires -- one that vanishes 38s in reproduces the discoverability
+    // complaint it existed to fix. Pickup drones stay timed regardless.
     startPermanent: true,
     // Priced against PAR dps, not the squad's actual dps, so a drone is worth a
     // known, fixed slice of the run's difficulty curve whether the player is

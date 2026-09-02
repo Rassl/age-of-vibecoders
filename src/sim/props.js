@@ -111,7 +111,42 @@ export function spawnGate(w, x, z, value, halfW) {
   p.gatedBy = null
   p.beatT = w.runTime
   p.killedByPlayer = false
+  p.rowL = null
+  p.rowR = null
   return p
+}
+
+/**
+ * Width tug-of-war: fire drags the row's shared edges toward the segment
+ * being shot. The hit panel widens and its neighbours give the width up, so
+ * committing bullets to the blue plate physically enlarges the lane you want
+ * to drive through -- and spraying the red one enlarges the mistake.
+ *
+ * Total row width is conserved edge-by-edge (outer edges never move), so the
+ * row stays gap-free and the strict-containment crossing test still bills
+ * exactly one segment. minHalfW keeps every panel wide enough to print its
+ * number: a segment squeezed to zero would still bill whoever clips it,
+ * which is a hidden fee, not a gate.
+ */
+export function growGate(w, g, dmg) {
+  const gt = CFG.gate
+  const want = gt.tugPerSec * (dmg / Math.max(1, w.nominalDPS))
+  const left = g.rowL && !g.rowL.dead ? g.rowL : null
+  const right = g.rowR && !g.rowR.dead ? g.rowR : null
+  const n = (left ? 1 : 0) + (right ? 1 : 0)
+  if (!n) return
+  const per = want / n
+  if (left) shiftEdge(g, left, -1, Math.min(per, left.halfW - gt.minHalfW))
+  if (right) shiftEdge(g, right, 1, Math.min(per, right.halfW - gt.minHalfW))
+}
+
+/** Move the edge between `g` and neighbour `s` by `e` toward `s` (dir ±1). */
+function shiftEdge(g, s, dir, e) {
+  if (e <= 0) return
+  g.halfW += e / 2
+  g.x += dir * (e / 2)
+  s.halfW -= e / 2
+  s.x += dir * (e / 2)
 }
 
 /** Smoothed number for the printed readout, so digits glide rather than strobe. */

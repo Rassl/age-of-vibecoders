@@ -10,10 +10,13 @@
  * step's DPS into a corpse and emits the death event forty times.
  */
 import { CFG } from '../config.js'
-import { WEAPONS } from '../data/weapons.js'
+import { WEAPONS, TURRET_TIER } from '../data/weapons.js'
+import { parDPS } from '../curves.js'
 import { bus, T } from '../core/bus.js'
 import { BK } from './targets.js'
 import { CAUSE } from './roster.js'
+import { growGate } from './props.js'
+import { MODE } from './world.js'
 
 /** Tick every soldier's timer and cast this step's rays. */
 export function fire(w, dt) {
@@ -56,10 +59,60 @@ export function fire(w, dt) {
 }
 
 /**
- * Straight ray along -Z. Walks the near-to-far blocker array and takes the first
- * (1 + pierce) blockers whose x-extent contains the ray.
+ * THE TURRET. The one gun in the game that does not fire straight down -Z.
+ *
+ * It sits on the truck behind the squad, yawed to wherever the player dragged
+ * the reticle, and its ray leaves the muzzle along that yaw -- so it can reach
+ * a barrel, a bubble, a spitter or a bloater in any lane while the squad
+ * (autopilot.js) is standing in another. That is the whole mode: the squad's
+ * body-aim and the player's free aim are two DPS streams pointed at two
+ * different problems, and every round is the question of which problem the
+ * free one should be on.
+ *
+ * Damage is priced against PAR like a drone's, never against the squad's own
+ * DPS: barrels stay priced against nominalDPS, so the turret is pure surplus
+ * and the pair beat's "you can afford one lane" arithmetic is unchanged for
+ * the squad. What the turret buys is the OTHER lane, if the player earns it.
  */
-function castRay(w, x, z, damage, pierce) {
+export function fireTurret(w, dt) {
+  if (w.mode !== MODE.TURRET) return
+  const t = CFG.turret
+  w.turretFireTimer -= dt
+  if (w.turretFireTimer > 0) return
+  const period = 1 / t.rate
+  // Accumulate rather than assign so the rate cannot drift slow at 12/s.
+  w.turretFireTimer += period
+  if (w.turretFireTimer < 0) w.turretFireTimer = period
+
+  const damage = (parDPS(w.runTime) * t.dpsFrac) / t.rate
+  const yaw = w.turretYaw
+  const L = t.barrelLen
+  // Muzzle in world space: the barrel swings about the pivot at (turretX, t.z).
+  const x0 = w.turretX + Math.sin(yaw) * L
+  const z0 = t.z - Math.cos(yaw) * L
+  // Lateral drift per unit of -z travel. Jitter is authored at the aim plane so
+  // the cone reads the same size on screen whatever the yaw.
+  const reach = Math.max(1e-3, z0 - t.aimZ)
+  const slope = Math.tan(yaw) + ((w.rng.next() - 0.5) * t.spread) / reach
+
+  castRay(w, x0, z0, damage, t.pierce, slope)
+  w.turretShots++
+  w.turretHitZ = w.lastHitZ
+  w.turretHitX = x0 + (z0 - w.lastHitZ) * slope
+
+  bus.emit(T.MUZZLE, x0, t.muzzleY, z0, 0, 0, 0, TURRET_TIER)
+  bus.emit(T.TRACER, x0, t.muzzleY, z0, w.lastHitZ, 0, slope, TURRET_TIER)
+}
+
+/**
+ * Ray toward -Z from (x, z), optionally raked by `slope` (lateral drift per
+ * unit of -z travel; 0 for every soldier, tan(yaw) for the turret). Walks the
+ * near-to-far blocker array and takes the first (1 + pierce) blockers whose
+ * x-extent contains the ray AT THAT BLOCKER'S DEPTH. The array is sorted by z
+ * and the ray is monotone in z, so near-to-far along the array is near-to-far
+ * along the ray whatever the rake.
+ */
+function castRay(w, x, z, damage, pierce, slope = 0) {
   const arr = w.blockers
   const n = w.blockerCount
   let hits = 0
@@ -71,7 +124,8 @@ function castRay(w, x, z, damage, pierce) {
   for (let i = 0; i < n; i++) {
     const b = arr[i]
     if (b.z > z) continue                  // behind the muzzle
-    if (Math.abs(x - b.x) > b.half + bullet) continue
+    const rx = slope === 0 ? x : x + (z - b.z) * slope
+    if (Math.abs(rx - b.x) > b.half + bullet) continue
     queueImpact(w, b.ref, damage, x, b.z)
 
     if (!stopped) { stopZ = b.z; stopped = true }
@@ -161,6 +215,9 @@ export function flushDamage(w) {
       // Do not bank charge against a cap that can never pay out, or a plate held
       // at max quietly stores a run's worth of DPS and dumps it if the cap moves.
       if (t.value >= CFG.gate.maxValue) t.charge = 0
+      // Fire also drags the row's shared edges toward this segment: the panel
+      // you invest in grows at its neighbour's expense (props.js growGate).
+      growGate(w, t, dmg)
       if (ticks > 0) bus.emit(T.GATE_TICK, t.x, CFG.gate.height * 0.5, t.z, t.value)
       continue
     }

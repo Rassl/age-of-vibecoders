@@ -11,18 +11,24 @@
 import { CFG } from './config.js'
 import { bus, T } from './core/bus.js'
 import { CAUSE } from './sim/roster.js'
+import { TURRET_TIER } from './data/weapons.js'
 
-export function wireReactions({ loop, camera, particles, tracers, rings, hud, audio, world, blasts }) {
+export function wireReactions({ loop, camera, particles, tracers, rings, hud, audio, world, blasts, turret }) {
   const trauma = CFG.camera.trauma
 
   // ---- shooting: four feedback channels on every hit, no exceptions ----------
 
   bus.on(T.MUZZLE, (e) => {
-    tracers.spawnMuzzle(e.x, e.y, e.z)
+    // kind is 0 for every soldier (the tier comes from the last sync) and
+    // TURRET_TIER for the mounted gun, which has its own flash and no brass.
+    const fromTurret = e.kind === TURRET_TIER
+    tracers.spawnMuzzle(e.x, e.y, e.z, fromTurret ? TURRET_TIER : undefined)
+    if (fromTurret && turret) turret.kick()
   })
 
   bus.on(T.TRACER, (e) => {
-    tracers.spawnTracer(e.x, e.y, e.z, e.a, e.kind)
+    // e.c is the rake: lateral drift per unit of travel, 0 for the squad.
+    tracers.spawnTracer(e.x, e.y, e.z, e.a, e.kind, e.c)
     audio.shot(e.kind, e.x)
   })
 

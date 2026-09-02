@@ -17,8 +17,16 @@ import { spawnZombie } from './zombies.js'
 import { spawnBarrel, spawnBubble, spawnGate } from './props.js'
 import { triggerBoss } from './boss.js'
 import { bus, T } from '../core/bus.js'
-import { STATE } from './world.js'
+import { STATE, MODE } from './world.js'
 
+/**
+ * HOLDOUT runs the SAME encounter script as ADVANCE -- beats, gate rows,
+ * sweeps, crowd -- so the reward economy (recruits, tiers, drones) is
+ * identical. What changes is the frame of reference: the road is frozen and
+ * everything spawns at the NEARER holdout horizon, closing on the squad at
+ * leg-ish speed (scrollSystem moves props; zombies walk in boosted). A
+ * baseline crowd ramp stands in for the pressure the treadmill used to add.
+ */
 export function direct(w, dt) {
   if (w.state !== STATE.RUNNING) {
     if (w.state === STATE.BOSS) spawnCrowd(w, dt, 0.35)
@@ -26,7 +34,8 @@ export function direct(w, dt) {
   }
 
   const t = w.runTime
-  const horizon = -CFG.world.spawnHorizon
+  const hold = w.mode === MODE.HOLDOUT
+  const horizon = hold ? -CFG.holdout.spawnHorizon : -CFG.world.spawnHorizon
 
   while (w.beatCursor < BEATS.length && BEATS[w.beatCursor].t <= t) {
     spawnBeat(w, BEATS[w.beatCursor], horizon)
@@ -43,7 +52,16 @@ export function direct(w, dt) {
     w.sweepCursor++
   }
 
-  spawnCrowd(w, dt, 1)
+  // The holdout stand-in for the pressure the treadmill used to add: credited
+  // directly so it shares spawnCrowd's cluster grouping (bodies arrive as a
+  // horde, not a trickle).
+  if (hold) {
+    w.spawnCredit += (CFG.holdout.baseRate + CFG.holdout.baseRateRamp * t) * CFG.difficulty * dt
+  }
+  // Holdout halves the DPS-priced crowd: bodies spend ~2x longer in transit at
+  // leg speed, so the same spawn rate would DOUBLE the standing crowd -- and a
+  // crowd that thick physically shields every barrel and bubble from fire.
+  spawnCrowd(w, dt, hold ? CFG.holdout.crowdMult : 1)
 
   if (t >= CFG.world.runSeconds) triggerBoss(w)
 }
@@ -81,12 +99,17 @@ function spawnGateRow(w, segments) {
   const span = CFG.world.clampX * 2
   const inset = CFG.gate.rowInset
   let cursor = -CFG.world.clampX
+  let prev = null
   for (const g of segments) {
     const width = ((g.w || 1) / total) * span
     // The visual panel is inset slightly so neighbouring segments read as two
     // gates with a post between them, but halfW -- the BILLING extent -- keeps
     // the full untrimmed width so the seam is not a dead zone.
-    spawnGate(w, cursor + width * 0.5, CFG.gate.spawnZ, g.v, width * 0.5)
+    const seg = spawnGate(w, cursor + width * 0.5, CFG.gate.spawnZ, g.v, width * 0.5)
+    // Row links power the width tug-of-war (growGate): shooting a segment
+    // drags the shared edge toward it at its neighbour's expense.
+    if (seg && prev) { prev.rowR = seg; seg.rowL = prev }
+    if (seg) prev = seg
     cursor += width
   }
   void inset
@@ -114,7 +137,11 @@ function spawnSweep(w, sweep, horizon) {
 function spawnCrowd(w, dt, mult) {
   const rate = spawnRate(w.runTime, Math.max(w.nominalDPS, 30)) * mult
   w.spawnCredit += rate * dt
-  const horizon = -CFG.world.spawnHorizon
+  // Holdout bodies close at leg speed, not leg+scroll: the nearer horizon
+  // keeps time-to-contact (and therefore pressure) close to advance mode.
+  const horizon = w.mode === MODE.HOLDOUT
+    ? -CFG.holdout.spawnHorizon
+    : -CFG.world.spawnHorizon
   const size = CLUSTER_SIZE
   if (w.spawnCredit < size) return
 

@@ -108,19 +108,26 @@ export const ENEMY_RIGS = {
   spitter: SPITTER_RIG, bloater: BLOATER_RIG,
 }
 
+// A SATURATED cobalt, not the old navy: on a grey road at phone size the squad
+// was a dark smudge, and the reference runners all carry their read on hue --
+// blue army, red horde. The gun stays charcoal so the muzzle flash has
+// something dark to land on.
 const C_SOLDIER = {
-  body: 0x3e5c78, helmet: 0x5b7ea0, pack: 0x2f4a63,
-  arm: 0x37536d, leg: 0x35516b, boot: 0x27333f, gun: 0x24282e, gunHot: 0x3b4149,
+  body: 0x2f7fd8, helmet: 0x62b4ff, pack: 0x2560ad,
+  arm: 0x2c74c8, leg: 0x2868b8, boot: 0x1b3a63, gun: 0x24282e, gunHot: 0x3b4149,
 }
 
-// One family, five values. The hue never separates the kinds -- it only stops
-// them looking like five different games.
+// One family, five values. The hue never separates the KINDS from each other --
+// silhouette does that -- but the family as a whole is now a hot crimson so the
+// horde reads as the red mass opposite the blue squad. The old olive-grey sat
+// on the asphalt at the same value and vanished past 40u. Pushed toward magenta
+// rather than orange so a crowd is never confused with a toll barrel (#C0392B).
 const C_Z = {
-  body: 0x7a8a6b, head: 0x93a182, shoulder: 0x869575,
-  arm: 0x6e7d61, leg: 0x5c6a51, foot: 0x3f4839,
-  lean: 0x8b9670, pale: 0x9aa483, dark: 0x55604a,
-  sac: 0x93a758, sacDark: 0x6d7d40,
-  seam: 0xe0642c, blister: 0xd8873a,
+  body: 0xb23a4e, head: 0xd25a68, shoulder: 0xc04a5c,
+  arm: 0xa4364a, leg: 0x8c2d40, foot: 0x521a28,
+  lean: 0xc2485c, pale: 0xdc7a88, dark: 0x6e2436,
+  sac: 0xd8c24a, sacDark: 0x9a8a2c,
+  seam: 0xff7a2c, blister: 0xffa03a,
 }
 
 // A HUMAN in a black tee, not a monster: the boss wears a GLTF portrait head

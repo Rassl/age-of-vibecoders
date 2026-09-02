@@ -12,22 +12,24 @@ except for pure data reads passed in as `w`.
 | role | hex | notes |
 |---|---|---|
 | sand ground | `#C2A878` | |
-| road asphalt | `#6E6A63` | |
+| road asphalt | `#736E66` | darkened so the saturated squad and horde carry the read |
 | road stripe | `#D8CBA6` | |
 | railing steel | `#8A8579` | rust stripe `#8C5A3C` every 3rd post |
 | sky top / horizon | `#5C6B7A` / `#E0C9A0` | |
 | fog | `#D9C39B` | `FogExp2`, density from `CFG.fx.fogDensity` |
-| soldier body | `#3E5C78` | helmet brighter `#5B7EA0` |
+| soldier body | `#2F7FD8` cobalt | helmet brighter `#62B4FF` |
 | soldier ring glow | `#4FC3F7` | additive |
-| zombie body | `#7A8A6B` desaturated | rim light `#E0503F` |
+| zombie body | `#B23A4E` crimson family | rim light `#FF5C4D`; bloater sac `#D8C24A` |
 | zombie ring | `#E5484D` | |
 | barrel healthy / damaged | `#C0392B` / `#5A2A22` | hazard stripes `#E8B93B` on walls |
 | bubble shell | `#7FE8FF` | additive fresnel |
 | boss | `#6B4A63` | the only violet in the scene |
 | muzzle / tracer | `#FFE9B0` / `#FFE08A` | |
 
-Hue is NEVER the primary separator between soldiers and zombies — silhouette and
-posture carry it; ring colour only confirms.
+Hue IS the primary separator between the two sides — blue squad, red horde, as
+in every runner the mode is measured against. Within a side, hue never separates
+KINDS: a runner, a brute and a spitter differ by silhouette and posture; ring
+colour only confirms.
 
 ## World state you may read
 

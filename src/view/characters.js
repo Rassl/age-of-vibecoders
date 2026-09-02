@@ -379,7 +379,7 @@ ${pose}`
   // BEFORE it is close enough to matter.
   const glowCol = opt.glow || [0, 0, 0]
   const rim = opt.rim ? `
-  gl_FragColor.rgb += vec3(0.878, 0.314, 0.247) * ${fresnel} * 0.55;` : ''
+  gl_FragColor.rgb += vec3(1.0, 0.36, 0.30) * ${fresnel} * 0.70;` : ''
   const glow = opt.glow ? `
   gl_FragColor.rgb += vec3(${f(glowCol[0])}, ${f(glowCol[1])}, ${f(glowCol[2])}) * vGlow;` : ''
 
@@ -968,7 +968,13 @@ export function createCharacters(scene) {
     boss.rotation.set(0.85 * bossFall, 0, 0)
 
     bossU.aPhase.value = b.phase * TAU
-    bossU.aFlash.value = b.flash > 1 ? 1 : b.flash
+    // NO hit flash on the boss. combat.js sets `flash = 1` on every damage
+    // event, which is fine on a walker that dies in three hits, but a 40-body
+    // minigun squad lands damage on the boss every step, so the same flash
+    // became a continuous white strobe over the whole fight (reported as "he
+    // is blinking while shot"). Damage is already read off the HP bar, the
+    // floating numbers and the plate staggers; the strobe added nothing.
+    bossU.aFlash.value = 0
     bossU.aGait.value = 1 - bossFall
     // A broken plate buys a stagger; spend it as a visible rock backwards.
     bossU.aDrive.value = clamp(b.stagger / CFG.boss.plateStagger, 0, 1)

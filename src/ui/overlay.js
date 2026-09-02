@@ -62,6 +62,17 @@ const CSS = `
 .aov-btn{font-size:17px;font-weight:700;letter-spacing:.3em;text-indent:.3em;
   color:#0B0D10;background:#E0C9A0;padding:14px 0 15px;
   clip-path:polygon(0 0,100% 0,100% 100%,14px 100%,0 calc(100% - 14px));}
+/* After a WIN the primary action is the next round, and it has to outrank
+   retry at a glance: bigger, brighter, and breathing. Replay is demoted to a
+   text link underneath so the card never reads as "retry?" after a victory. */
+.aov-btn.next{font-size:21px;padding:18px 0 19px;background:#F4E4B8;
+  box-shadow:0 0 0 2px rgba(244,228,184,.35),0 8px 28px rgba(224,201,160,.35);
+  animation:aov-breathe 1.6s ease-in-out infinite;}
+@keyframes aov-breathe{0%{transform:scale(1)}50%{transform:scale(1.035)}100%{transform:scale(1)}}
+.aov-alt{display:none;margin-top:14px;padding:8px 0;font-size:11px;letter-spacing:.3em;
+  text-indent:.3em;color:rgba(224,201,160,.62);text-decoration:underline;
+  text-underline-offset:4px;cursor:pointer;}
+.aov-alt.on{display:block;}
 .aov-hint{margin-top:12px;font-size:10px;letter-spacing:.3em;text-indent:.3em;
   color:rgba(194,168,120,.62);}
 .aov-tap{margin-top:26px;font-size:13px;font-weight:700;letter-spacing:.34em;
@@ -70,6 +81,7 @@ const CSS = `
   font-size:11px;font-weight:700;letter-spacing:.3em;text-indent:.3em;
   color:#E0C9A0;border:1px solid rgba(224,201,160,.45);}
 .aov-round:empty{display:none;}
+.aov-round + .aov-btn{margin-top:14px;}
 @keyframes aov-pulse{0%{opacity:.32}50%{opacity:1}100%{opacity:.32}}
 `
 
@@ -120,9 +132,12 @@ function gradeFor(w, won) {
 /**
  * @param {HTMLElement} root the #overlay div
  * @param {Function} onStart
- * @param {Function} onRestart
+ * @param {Function} onRestart  primary action on the end card: retry after a
+ *   loss, advance after a win (main.js has already bumped the round)
+ * @param {Function} [onReplay] secondary action after a win: replay the round
+ *   just cleared rather than advancing
  */
-export function createOverlay(root, onStart, onRestart) {
+export function createOverlay(root, onStart, onRestart, onReplay) {
   injectStyle()
 
   // Set on the element rather than in the stylesheet so the factory works with
@@ -152,8 +167,11 @@ export function createOverlay(root, onStart, onRestart) {
     div('aov-k', row, ROWS[i])
     vals[i] = div('aov-v', row)
   }
-  div('aov-btn', endCard, 'RETRY')
   const endRound = div('aov-round', endCard)
+  const endBtn = div('aov-btn', endCard, 'RETRY')
+  // Secondary action, wins only: replay the round just cleared instead of
+  // advancing. Stops propagation so the scrim's tap-anywhere never fires.
+  const endAlt = div('aov-alt', endCard)
   div('aov-hint', endCard, 'TAP ANYWHERE OR PRESS R')
 
   let mode = 0            // 0 none, 1 start, 2 end
@@ -215,6 +233,10 @@ export function createOverlay(root, onStart, onRestart) {
     endRound.textContent = won
       ? `NEXT: ROUND ${round}${tag ? ' • ' + tag : ''}`
       : ''
+    endBtn.textContent = won ? 'NEXT ROUND \u25B6' : 'RETRY'
+    endBtn.className = won ? 'aov-btn next' : 'aov-btn'
+    endAlt.textContent = won ? `REPLAY ROUND ${Math.max(1, round - 1)}` : ''
+    endAlt.className = won ? 'aov-alt on' : 'aov-alt'
     show(2)
   }
 
@@ -242,6 +264,15 @@ export function createOverlay(root, onStart, onRestart) {
     trigger()
   }
 
+  function onAlt(e) {
+    e.stopPropagation()
+    e.preventDefault()
+    if (mode !== 2 || performance.now() < armedAt) return
+    hide()
+    if (onReplay) onReplay()
+    else if (onRestart) onRestart()
+  }
+
   function onKey(e) {
     if (mode === 0) return
     const k = e.key
@@ -254,6 +285,7 @@ export function createOverlay(root, onStart, onRestart) {
   // pointerdown, not click: a click waits for the release and adds ~80ms of
   // dead air to the one interaction the whole loop is built around.
   scrim.addEventListener('pointerdown', onPointer)
+  endAlt.addEventListener('pointerdown', onAlt)
   window.addEventListener('keydown', onKey)
 
   function reset() {
@@ -262,6 +294,7 @@ export function createOverlay(root, onStart, onRestart) {
 
   function dispose() {
     scrim.removeEventListener('pointerdown', onPointer)
+    endAlt.removeEventListener('pointerdown', onAlt)
     window.removeEventListener('keydown', onKey)
     if (scrim.parentNode) scrim.parentNode.removeChild(scrim)
   }

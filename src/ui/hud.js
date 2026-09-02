@@ -89,9 +89,11 @@ const CSS = `
 .aov-rage .a{fill:none;stroke:#E0C9A0;stroke-width:3;}
 .aov-rage.raging .a{stroke:#E5484D;animation:aov-blink .48s steps(2,end) infinite;}
 @keyframes aov-blink{0%{opacity:1}50%{opacity:.25}100%{opacity:1}}
-/* The bottom 28% of the screen is the squad's band and the thumb's band, and
-   stays empty of HUD. The count sits just above it. */
-.aov-count{position:absolute;left:0;right:0;text-align:center;
+/* The squad count now lives IN THE WORLD, over the formation (view/labels.js),
+   the way the reference runners print it on the crowd. The DOM count stays
+   wired -- the punch and tint ramps are still driven -- but is not shown, so
+   the bottom 28% of the screen is entirely the squad's band and the thumb's. */
+.aov-count{position:absolute;left:0;right:0;text-align:center;display:none;
   bottom:calc(9% + env(safe-area-inset-bottom,0px));}
 .aov-count-n{display:inline-block;font-size:clamp(42px,13vw,76px);line-height:.9;
   font-weight:700;letter-spacing:-.02em;transform-origin:50% 60%;

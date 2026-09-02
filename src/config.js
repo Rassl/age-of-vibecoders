@@ -332,7 +332,10 @@ export const CFG = {
   // A row of segments spans the corridor and you pass through EXACTLY ONE, so
   // the choice is which value to take, never whether to engage at all.
   gate: {
-    height: 1.45,
+    // 2.2, up from 1.45: the plate is the one object the player must READ at
+    // 34u, and the reference runners size their gates as slabs, not fences.
+    // The sim only uses this for the height of the gate-hit particle burst.
+    height: 2.2,
     y: 0.0,
     postHalf: 0.11,
     thickness: 0.16,
@@ -392,12 +395,14 @@ export const CFG = {
    * off-axis turret would quietly retire the mode's whole premise.
    */
   drone: {
-    // No default escort: the drone is a PICKUP, earned from its bubble. (It
-    // once deployed with the squad to fix a discoverability complaint -- "I
-    // don't see it" -- so if drone bubbles ever move back behind expensive
-    // tolls, revisit this: a mechanic the player cannot discover is not a
-    // mechanic.)
-    startCount: 0,
+    // The squad DEPLOYS with one permanent scout. It was cut to a pure pickup
+    // once, and the same complaint came straight back ("drone does not seem
+    // to work"): the only drone bubbles sit behind the three most expensive
+    // tolls at 27s/49s/71s, and the HOLD and TURRET rounds have no bubbles at
+    // all, so most players never saw the feature exist. A mechanic the player
+    // cannot discover is not a mechanic. At startDpsFrac 0.05 it is a scout
+    // that plinks, measured 22/30 against a 20/30 baseline when it last shipped.
+    startCount: 1,
     // Room for every pickup a run can realistically hold at once; sized when a
     // permanent default escort occupied one slot, and left alone so stacking
     // drone bubbles stays rewarding.

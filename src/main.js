@@ -30,6 +30,7 @@ import { createParticles } from './fx/particles.js'
 import { createRings } from './fx/rings.js'
 import { createMelons } from './fx/melons.js'
 import { createDamageNumbers } from './fx/damagenumbers.js'
+import { createLabels } from './view/labels.js'
 import { createDecals } from './fx/decals.js'
 import { createDebris } from './fx/debris.js'
 import { createBlasts } from './fx/blasts.js'
@@ -88,6 +89,7 @@ const melons = createMelons(scene)
 const decals = createDecals(scene)
 const debris = createDebris(scene)
 const damage = createDamageNumbers(scene, atlas)
+const labels = createLabels(scene, atlas)
 const projectiles = createProjectiles(scene)
 // A composer, not a layer: it owns no mesh and no frame callback, it just keeps
 // one six-call recipe from drifting across the eight sites that fire it.
@@ -126,7 +128,7 @@ const pauseBtn = hud.pauseButton(() => {
 
 const input = new Input(canvas)
 
-const overlay = createOverlay(overlayRoot, onStart, onRestart)
+const overlay = createOverlay(overlayRoot, onStart, onRestart, onReplay)
 
 // ------------------------------------------------------------- NG+ rounds ---
 // One completed run unlocks the next round; each round raises CFG.difficulty,
@@ -214,6 +216,19 @@ function onStart() {
   loop.start()
 }
 
+/**
+ * Replay the round just won instead of advancing. RUN_OVER already bumped the
+ * round and persisted it, so step it back BEFORE restart() prices the run.
+ */
+function onReplay() {
+  if (round > 1) {
+    round--
+    try { localStorage.setItem(ROUND_KEY, String(round)) } catch { /* best-effort */ }
+    applyRound()
+  }
+  onRestart()
+}
+
 function onRestart() {
   // resume() is the only thing that boots the AudioContext. If the player's
   // first gesture of the session lands here rather than on the start card, the
@@ -256,6 +271,7 @@ function restart() {
   decals.reset()
   debris.reset()
   damage.reset()
+  labels.reset()
   projectiles.reset()
   hud.reset()
   audio.reset()
@@ -328,6 +344,7 @@ function render(rawDt, scaledDt, alpha, frameMs) {
   tracers.sync(world, rawDt, camera)
   particles.sync(rawDt, camera)
   damage.sync(world, rawDt, camera)
+  labels.sync(world, rawDt, camera)
   hud.sync(world)
   audio.setIntensity(Math.min(1, world.count / CFG.squad.intensityRef))
   audio.sync(rawDt, world)

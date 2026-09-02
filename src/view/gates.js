@@ -34,8 +34,15 @@ const CODE_PLUS = 43
 const CODE_MINUS = 45
 
 const MAX_DIGITS = 3          // '-14' is the widest value the table authors
-const GLYPH_SIZE = 0.62
-const GLYPH_ADVANCE = 0.33
+// The number IS the plate. Sized so a two-digit value fills about half the
+// panel height and reads from the spawn distance without the px floor kicking
+// in on a phone; the floor below only catches very tall viewports.
+const GLYPH_SIZE = 1.05
+const GLYPH_ADVANCE = 0.56
+// Never let the number outgrow its own segment: the width tug-of-war can
+// squeeze a panel to 2 * CFG.gate.minHalfW, and a three-glyph "-14" at full
+// size is wider than that.
+const GLYPH_FIT = 0.92
 
 // Apparent-size floor -- see the long note in src/view/props.js. Gates spawn at
 // z=-34 rather than the 72u content horizon, so this readout is only marginal
@@ -43,16 +50,16 @@ const GLYPH_ADVANCE = 0.33
 // solid panel behind the glyph gives it contrast the other readouts lack, and a
 // row splits the corridor into 2-3 segments only 70-106px wide, so an oversized
 // '+12' would overflow its own segment.
-const GLYPH_MIN_PX = 22
-const GLYPH_MAX_K = 2.5
+const GLYPH_MIN_PX = 30
+const GLYPH_MAX_K = 2.0
 
 // Reference palette: a saturated blue for gain, a hot red for loss. They must be
 // separable at the far end of the corridor with the fog on them, so both are
 // pushed well clear of the grey road rather than being tinted pastels.
-const C_GAIN = new Color(0x2E86F0)
-const C_LOSS = new Color(0xE2453B)
-const C_GAIN_RIM = new Color(0x8FD4FF)
-const C_LOSS_RIM = new Color(0xFFB4A0)
+const C_GAIN = new Color(0x1E7CFF)
+const C_LOSS = new Color(0xFF3A2E)
+const C_GAIN_RIM = new Color(0xA8E4FF)
+const C_LOSS_RIM = new Color(0xFFC8B4)
 const TINT_TEXT = new Color(0xFFFFFF)
 const TINT_OUTLINE = new Color(0x12212F)
 
@@ -83,7 +90,9 @@ void main() {
   float edge = max(d.x, d.y);
   float border = smoothstep(0.80, 0.99, edge);
   float wipe = 0.5 + 0.5 * sin((vUv.y * 5.0) - vFlags.y * 3.0);
-  float body = 0.34 + 0.16 * wipe;
+  // Denser than the old 0.34: a hologram this faint disappeared against a
+  // lit road. Still translucent, so bodies behind it stay visible.
+  float body = 0.58 + 0.14 * wipe;
   vec3 col = mix(vTint.rgb, vTint.rgb + vec3(0.55), border * vFlags.x);
   float a = (body + border * 0.75) * vTint.a;
   if (a < 0.01) discard;
@@ -313,7 +322,11 @@ export function createGates(scene, atlas) {
           k = raw < 1 ? 1 : raw > GLYPH_MAX_K ? GLYPH_MAX_K : raw
         }
       }
-      // Advance scales WITH size, or the glyphs grow into each other.
+      // Advance scales WITH size, or the glyphs grow into each other -- and the
+      // whole string is clamped to its segment so a squeezed panel keeps its
+      // number inside its own posts.
+      const fitK = (width * GLYPH_FIT) / ((chars - 1) * GLYPH_ADVANCE + GLYPH_SIZE)
+      if (fitK < k) k = fitK
       const adv = GLYPH_ADVANCE * k
       const gsize = GLYPH_SIZE * k
       const x0 = p.x - ((chars - 1) * adv) * 0.5

@@ -36,7 +36,10 @@ const STATE_BOSS = 2
 // VALUE multipliers on top of it, so a retint is one hex per surface.
 
 const C_SAND = 0xc2a878
-const C_ASPHALT = 0x9c968a
+// Darker than it was (0x9c968a): the road is the ground every body stands on,
+// and a mid-grey road put the squad and the horde at its own value. Pulling it
+// down a step is what lets a saturated blue and red carry the read at 60u.
+const C_ASPHALT = 0x736e66
 const C_STRIPE = 0xd8cba6
 const C_STEEL = 0x8a8579
 const C_RUST = 0x8c5a3c

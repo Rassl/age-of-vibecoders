@@ -25,6 +25,9 @@ const INSTRUCTION = [
   'DRAG TO AIM — YOUR SQUAD MOVES ITSELF',
 ]
 const MODE_TAG = ['', 'HOLD THE LINE', 'MAN THE GUN']
+// Second line under the instruction: the one rule players kept missing. Only
+// ADVANCE has orbs; the other modes have no pickup rule worth a line.
+const TIP = ['SHOOT THE ORBS TO CLAIM THEM', '', '']
 const ARM_MS = 380   // see armedAt
 
 const GRADES = ['F', 'D', 'C', 'B', 'A', 'S']
@@ -51,6 +54,8 @@ const CSS = `
 .aov-rule{height:2px;margin:16px 0;background:linear-gradient(90deg,
   rgba(224,201,160,0),#E0C9A0 18%,#E0C9A0 82%,rgba(224,201,160,0));}
 .aov-line{font-size:12px;letter-spacing:.16em;color:#C2A878;line-height:1.7;}
+.aov-tip{color:#CFF6FF;opacity:.85;}
+.aov-tip:empty{display:none;}
 .aov-grade{font-size:74px;line-height:1;font-weight:700;letter-spacing:.02em;
   color:#0B0D10;background:#E0C9A0;display:inline-block;padding:6px 22px 10px;
   margin:2px 0 4px;clip-path:polygon(0 0,100% 0,100% 76%,88% 100%,0 100%);}
@@ -153,6 +158,7 @@ export function createOverlay(root, onStart, onRestart, onReplay) {
   div('aov-rule', startCard)
   const startRound = div('aov-round', startCard)
   const startLine = div('aov-line', startCard, INSTRUCTION[0])
+  const startTip = div('aov-line aov-tip', startCard, TIP[0])
   div('aov-tap', startCard, 'TAP TO DEPLOY')
 
   // --- end card, built once: showEnd() only rewrites text nodes, so a restart
@@ -198,6 +204,7 @@ export function createOverlay(root, onStart, onRestart, onReplay) {
       ? `ROUND ${round} \u2022 +${Math.round((CFG.difficulty - 1) * 100)}% THREAT${tag ? ' \u2022 ' + tag : ''}`
       : tag
     startLine.textContent = INSTRUCTION[runMode]
+    startTip.textContent = TIP[runMode]
   }
 
   function show(next) {

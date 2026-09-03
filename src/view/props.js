@@ -113,6 +113,18 @@ const DIGIT_Z_WALL = 1.40
 const BADGE_SIZE = 0.36
 const BADGE_ADVANCE = 0.225
 const BADGE_Y = 1.30
+// The bubble's HP readout, stacked ABOVE the reward badge. The badge says what
+// it pays, the ring says roughly how far along it is, and this says exactly how
+// much fire is left -- the same counting-down number the barrel taught two
+// lanes ago, so the player reads "shoot this" without a tutorial.
+//
+// Above, not under the orb: a gated bubble sits 7u behind its toll barrel, and
+// anything at orb height or lower is hidden behind the drums until the barrel
+// is dead -- which is precisely when the player is deciding whether to commit.
+// The stack is held in SCREEN space (see updateBubble): both labels sit on an
+// apparent-size floor at range, so a fixed world gap would collapse to a few
+// pixels at the horizon and the two numbers would print on top of each other.
+const BUBBLE_DIGIT_GAP = 0.08
 
 // Time-to-kill vs time-remaining. Under 0.55 the barrel dies with margin; over
 // 1.0 it is arithmetically unkillable and the player should be reading "dodge".
@@ -701,7 +713,7 @@ export function createProps(scene, atlas) {
   const decalGeo = keep(geos, new PlaneGeometry(CFG.barrel.wallWidth, 6, 1, 1).rotateX(-Math.PI * 0.5))
   const quadGeo = keep(geos, new PlaneGeometry(1, 1))
   const shellGeo = keep(geos, new IcosahedronGeometry(0.85, 2))
-  const ringGeo = keep(geos, new TorusGeometry(0.93, 0.028, 6, 84))
+  const ringGeo = keep(geos, new TorusGeometry(0.93, 0.055, 6, 84))
   const trioGeo = keep(geos, buildSoldierTrio())
   const droneTokenGeo = keep(geos, buildDroneToken())
   const gunGeo = keep(geos, buildMinigun())
@@ -876,13 +888,31 @@ export function createProps(scene, atlas) {
     badge.renderOrder = 11
     group.add(badge)
 
+    // HP digits, identical in construction to the barrel's so updateDigits can
+    // drive both: same pop-on-change, same green/amber/red time-to-kill tint.
+    const dgeo = keep(geos, makeGlyphGeometry(quadGeo, MAX_DIGITS))
+    const dmat = keep(mats, makeGlyphMaterial(atlas.texture, TINT_GOOD))
+    const digits = new InstancedMesh(dgeo, dmat, MAX_DIGITS)
+    digits.frustumCulled = false
+    digits.count = 0
+    digits.position.set(0, BADGE_Y + BADGE_SIZE * 0.5 + DIGIT_SIZE * 0.5 + BUBBLE_DIGIT_GAP, 0)
+    digits.renderOrder = 11
+    group.add(digits)
+
     root.add(group)
     return {
-      group, shell, ring, contents, trio, gun, droneToken, badge,
+      group, shell, ring, contents, trio, gun, droneToken, badge, digits,
       shellUni: shellMat.uniforms,
       ringUni: ringMat.uniforms,
       badgeAttr: bgeo.getAttribute('aUv'),
       badgeKey: 0,
+      digitUni: dmat.uniforms,
+      uvAttr: dgeo.getAttribute('aUv'),
+      popAttr: dgeo.getAttribute('aPop'),
+      dig: new Int16Array(MAX_DIGITS),
+      pop: new Float32Array(MAX_DIGITS),
+      nDigits: -1,
+      fresh: true,
       spin: 0,
       time: 0,
     }
@@ -950,6 +980,15 @@ function apparentK(x, y, z, base, minPx, maxK) {
     e.spin = 0
     e.time = 0
     e.badge.count = 0
+    e.nDigits = -1
+    e.fresh = true
+    const pop = e.popAttr.array
+    for (let i = 0; i < MAX_DIGITS; i++) {
+      e.dig[i] = -1
+      e.pop[i] = 0
+      pop[i] = 0
+    }
+    e.popAttr.needsUpdate = true
   }
 
   function updateDigits(e, p, w, dt) {
@@ -1148,6 +1187,15 @@ function apparentK(x, y, z, base, minPx, maxK) {
     const badgeK = apparentK(p.x, CFG.bubble.y + BADGE_Y, p.z, BADGE_SIZE, BADGE_MIN_PX, BADGE_MAX_K)
     e.badge.scale.setScalar(badgeK)
     updateBadge(e, p, w, kind)
+
+    // Same apparent-size floor as the barrel number: this is the readout that
+    // answers "how many more hits", so it has to survive the spawn horizon.
+    // Stacked over the badge by each label's SCALED half-height, so the pair
+    // stays two clear lines whether both are at 1x up close or clamped at range.
+    const digitK = apparentK(p.x, CFG.bubble.y + BADGE_Y + 0.6, p.z, DIGIT_SIZE, DIGIT_MIN_PX, DIGIT_MAX_K)
+    e.digits.scale.setScalar(digitK)
+    e.digits.position.y = BADGE_Y + BADGE_SIZE * 0.5 * badgeK + DIGIT_SIZE * 0.5 * digitK + BUBBLE_DIGIT_GAP
+    updateDigits(e, p, w, dt)
   }
 
   /**

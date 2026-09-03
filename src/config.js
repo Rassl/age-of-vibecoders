@@ -136,9 +136,13 @@ export const CFG = {
   bubble: {
     radius: 0.7,
     y: 1.1,
-    perBubbleBase: 2,
-    perBubbleRate: 0.052,
-    perBubbleMax: 8,
+    // Raised 2/0.052/8 -> 3/0.08/12: a sphere paid 2-3 bodies in the opening
+    // and capped at 8, which by round 3 (difficulty 1.30) was not enough to
+    // keep pace with the horde. It now pays 3 at the start, ~7 by the midpoint
+    // and up to 12 in the crescendo.
+    perBubbleBase: 3,
+    perBubbleRate: 0.08,
+    perBubbleMax: 12,
     missPenalty: 0,       // never punish a miss
     joinerSpeed: 16,
     joinerStagger: 0.06,
@@ -375,8 +379,12 @@ export const CFG = {
     // blackout is about two seconds: long enough to be a real decision, short
     // enough to survive.
     spawnZ: -34,
-    secondsPerStep: 0.30,
-    maxValue: 25,
+    // 0.30 -> 0.22: a plate now climbs ~4.5 points per second of squad DPS
+    // instead of ~3.3, so a blue plate pays noticeably more for the same fire
+    // and a red one flips sooner. This is BELOW the cliff described above, so
+    // the flip-before-arrival property still holds.
+    secondsPerStep: 0.22,
+    maxValue: 30,
     joinerStagger: 0.05,
     // Width tug-of-war (growGate): how fast a segment under FULL squad fire
     // steals width from its neighbours, in u/s -- and the floor no panel is

@@ -96,17 +96,20 @@ export const BEATS = [
  * if either spawn distance changes.
  */
 export const GATE_ROWS = [
-  { t: 10, segments: [{ v: 1, w: 1 }, { v: -3, w: 1 }] },
-  { t: 21, segments: [{ v: -4, w: 1 }, { v: 1, w: 1 }] },
+  // Blue values raised one tier across the board (1->2, 2->3, 3->5): the
+  // blue plate is the main recruiting beat between bubbles and it paid too
+  // little to matter once the horde scales past round 2.
+  { t: 10, segments: [{ v: 2, w: 1 }, { v: -3, w: 1 }] },
+  { t: 21, segments: [{ v: -4, w: 1 }, { v: 2, w: 1 }] },
   // Three segments, bad in the middle: the first row that punishes holding the
   // centre lane, which is where an idle player parks.
-  { t: 32, segments: [{ v: 2, w: 1 }, { v: -6, w: 1.2 }, { v: 1, w: 1 }] },
-  { t: 43, segments: [{ v: -7, w: 1 }, { v: 2, w: 1 }] },
-  { t: 54, segments: [{ v: 2, w: 1 }, { v: -9, w: 1 }] },
+  { t: 32, segments: [{ v: 3, w: 1 }, { v: -6, w: 1.2 }, { v: 2, w: 1 }] },
+  { t: 43, segments: [{ v: -7, w: 1 }, { v: 3, w: 1 }] },
+  { t: 54, segments: [{ v: 3, w: 1 }, { v: -9, w: 1 }] },
   // The good segment is now narrower than a lane: a real steering commitment.
-  { t: 65, segments: [{ v: -10, w: 1.3 }, { v: 3, w: 0.9 }, { v: -10, w: 1.3 }] },
-  { t: 76, segments: [{ v: 3, w: 1 }, { v: -12, w: 1 }] },
-  { t: 87, segments: [{ v: -14, w: 1 }, { v: 3, w: 1 }] },
+  { t: 65, segments: [{ v: -10, w: 1.3 }, { v: 5, w: 0.9 }, { v: -10, w: 1.3 }] },
+  { t: 76, segments: [{ v: 5, w: 1 }, { v: -12, w: 1 }] },
+  { t: 87, segments: [{ v: -14, w: 1 }, { v: 5, w: 1 }] },
 ]
 
 /** Distance behind its toll that a pair's reward bubble sits, in world units. */

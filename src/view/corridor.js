@@ -24,6 +24,7 @@ import {
   InstancedMesh, Mesh, MeshBasicMaterial, MeshLambertMaterial, PlaneGeometry,
   RepeatWrapping, ShaderMaterial, SphereGeometry, SRGBColorSpace, Vector3,
 } from 'three'
+import { createScenery } from './scenery.js'
 import { CFG } from '../config.js'
 import { remap } from '../util/math.js'
 
@@ -39,9 +40,9 @@ const C_SAND = 0xc2a878
 // Darker than it was (0x9c968a): the road is the ground every body stands on,
 // and a mid-grey road put the squad and the horde at its own value. Pulling it
 // down a step is what lets a saturated blue and red carry the read at 60u.
-const C_ASPHALT = 0x736e66
+const C_ASPHALT = 0x60666b
 const C_STRIPE = 0xd8cba6
-const C_STEEL = 0x8a8579
+const C_STEEL = 0x87959d
 const C_RUST = 0x8c5a3c
 const C_ROCK = 0x8e7c60
 const C_BARRIER = 0xb9ae96
@@ -317,31 +318,29 @@ const DETAIL_MEAN = 0.795
  * silhouette is one triangle, not a mesh.
  */
 function buildRidgeGeometry(seed, span, baseH) {
-  const TRIS = 30
-  const pos = new Float32Array(TRIS * 9)
-  const col = new Float32Array(TRIS * 9)
-  const nor = new Float32Array(TRIS * 9)
-  for (let k = 0; k < TRIS; k++) {
-    const cx = -span + 2 * span * ((k + 0.5) / TRIS) + (hash2(seed, k) - 0.5) * span * 0.09
-    const w = span / TRIS * (1.6 + 2.6 * hash2(seed, k + 7))
-    const h = baseH * (0.30 + 0.95 * hash2(seed, k + 3))
-    const apex = cx + (hash2(seed, k + 5) - 0.5) * w * 0.8
-    const v = 0.86 + 0.26 * hash2(seed, k + 17)
-    const o = k * 9
-    // CCW as seen from +z (the camera side): base-left, base-right, apex.
-    pos[o] = cx - w; pos[o + 1] = 0; pos[o + 2] = 0
-    pos[o + 3] = cx + w; pos[o + 4] = 0; pos[o + 5] = 0
-    pos[o + 6] = apex; pos[o + 7] = h; pos[o + 8] = 0
-    // Base sits in the haze, apex catches the light: a cheap aerial gradient.
-    col[o] = col[o + 1] = col[o + 2] = v * 0.94
-    col[o + 3] = col[o + 4] = col[o + 5] = v * 0.94
-    col[o + 6] = col[o + 7] = col[o + 8] = v * 1.14
-    nor[o + 2] = nor[o + 5] = nor[o + 8] = 1
+  const positions = [], colors = []
+  // Each peak has three sloping faces and a projecting foothill, so sunlight
+  // describes a volume instead of a flat triangle pasted onto the sky.
+  for (let k = 0; k < 30; k++) {
+    const cx = -span + 2 * span * ((k + .5) / 30)
+    const w = span / 30 * (1.6 + 2.6 * hash2(seed, k + 7))
+    const h = baseH * (.30 + .95 * hash2(seed, k + 3))
+    const apex = cx + (hash2(seed, k + 5) - .5) * w * .8
+    const peak = [apex, h, -3 - hash2(seed, k + 9) * 9]
+    const foot = [cx + w * .15, 0, 8 + hash2(seed, k + 12) * 8]
+    const left = [cx - w, 0, 0], right = [cx + w, 0, 0]
+    for (const [a, b, c, shade] of [[left, foot, peak, .87], [foot, right, peak, 1.12]]) {
+      positions.push(...a, ...b, ...c)
+      for (const v of [a, b, c]) {
+        const value = shade * (v[1] > 0 ? 1.10 : .88)
+        colors.push(value, value, value)
+      }
+    }
   }
   const geo = new BufferGeometry()
-  geo.setAttribute('position', new BufferAttribute(pos, 3))
-  geo.setAttribute('normal', new BufferAttribute(nor, 3))
-  geo.setAttribute('color', new BufferAttribute(col, 3))
+  geo.setAttribute('position', new BufferAttribute(new Float32Array(positions), 3))
+  geo.setAttribute('color', new BufferAttribute(new Float32Array(colors), 3))
+  geo.computeVertexNormals()
   return geo
 }
 
@@ -397,7 +396,7 @@ export function createCorridor(scene) {
   // modelling budget: a 40 degree key from the upper left front gives every box a
   // lit face, a mid face and a dark face. A top-down key would flatten the whole
   // scene into one unreadable value.
-  const hemi = new HemisphereLight(C_HEMI_SKY, C_HEMI_GND, 0.55)
+  const hemi = new HemisphereLight(C_HEMI_SKY, C_HEMI_GND, 0.72)
   const key = new DirectionalLight(C_KEY, 1.15)
   key.position.set(-39.5, 38.6, 23.0)
   group.add(hemi, key, key.target)
@@ -444,8 +443,8 @@ export function createCorridor(scene) {
   // Two static silhouette layers behind the fog wall. No parallax on purpose:
   // at 100u+ the camera's 2u of lateral travel moves them under a pixel, and
   // integrating a scroll for them is drift risk for zero visible motion.
-  const ridgeMatA = new MeshBasicMaterial({ color: C_RIDGE_A, vertexColors: true })
-  const ridgeMatB = new MeshBasicMaterial({ color: C_RIDGE_B, vertexColors: true })
+  const ridgeMatA = new MeshLambertMaterial({ color: C_RIDGE_A, vertexColors: true })
+  const ridgeMatB = new MeshLambertMaterial({ color: C_RIDGE_B, vertexColors: true })
   const ridgeA = new Mesh(buildRidgeGeometry(3, 150, 11), ridgeMatA)
   ridgeA.position.set(0, SAND_Y, -104)
   const ridgeB = new Mesh(buildRidgeGeometry(11, 190, 15), ridgeMatB)
@@ -544,6 +543,7 @@ export function createCorridor(scene) {
   const COL_WRECK = new Color(C_WRECK)
   const COL_BLOCK = new Color(C_BLOCK)
 
+  const scenery = createScenery(group)
   scene.add(group)
 
   // -------------------------------------------------------------- danger shift
@@ -584,6 +584,7 @@ export function createCorridor(scene) {
    */
   function sync(w) {
     const d = w.distance
+    scenery.sync(d)
     const wrapZ = CFG.world.despawnZ + BEHIND_MARGIN
     const rx = CFG.world.railX
 
@@ -707,6 +708,7 @@ export function createCorridor(scene) {
   }
 
   function dispose() {
+    scenery.dispose()
     scene.remove(group)
     sandTex.dispose()
     roadTex.dispose()

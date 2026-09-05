@@ -66,29 +66,29 @@ const CSS = `
   transform-origin:0 50%;will-change:transform;}
 .aov-chip{background:#FFE9B0;opacity:0;will-change:opacity,transform;}
 .aov-fill{background:#D8CBA6;}
-.aov-dist{position:absolute;left:0;right:0;top:26px;text-align:center;
+.aov-dist{position:absolute;left:0;right:0;top:30px;text-align:left;padding-left:24px;
   font:800 13px/1 ui-sans-serif,system-ui,sans-serif;letter-spacing:.10em;
   color:#EFE3C4;text-shadow:0 1px 2px rgba(0,0,0,.55);pointer-events:none;}
 .aov-bar.boss{background:rgba(107,74,99,.55);}
 .aov-bar.boss .aov-fill{background:#E5484D;}
-.aov-wep{position:absolute;left:0;right:0;text-align:center;font-size:11px;
-  top:calc(env(safe-area-inset-top,0px) + 26px);
+.aov-wep{position:absolute;left:24px;right:110px;text-align:left;font-size:11px;
+  top:calc(env(safe-area-inset-top,0px) + 52px);
   letter-spacing:.34em;text-indent:.34em;color:#E0C9A0;opacity:0;
   will-change:opacity;text-shadow:0 1px 3px rgba(0,0,0,.8);}
 .aov-wings{position:absolute;left:0;right:0;text-align:center;font-size:11px;
-  top:calc(env(safe-area-inset-top,0px) + 44px);
+  top:calc(env(safe-area-inset-top,0px) + 78px);
   letter-spacing:.30em;text-indent:.30em;color:#8FEFFF;opacity:0;
   will-change:opacity;text-shadow:0 1px 3px rgba(0,0,0,.8);}
-.aov-rage{position:absolute;right:10px;width:32px;height:32px;opacity:0;
-  top:calc(env(safe-area-inset-top,0px) + 24px);
+.aov-rage{position:absolute;right:24px;width:32px;height:32px;opacity:0;
+  top:calc(env(safe-area-inset-top,0px) + 76px);
   transition:opacity 220ms ease;will-change:opacity;}
-.aov-snd,.aov-pause,.aov-xr{position:absolute;right:10px;width:34px;height:34px;
-  top:calc(env(safe-area-inset-top,0px) + 66px);
-  pointer-events:auto;cursor:pointer;border:0;border-radius:50%;
+.aov-snd,.aov-pause,.aov-xr{position:absolute;right:20px;width:38px;height:38px;
+  top:calc(env(safe-area-inset-top,0px) + 26px);
+  pointer-events:auto;cursor:pointer;border:1px solid rgba(224,201,160,.3);border-radius:7px;
   background:rgba(11,13,16,.45);color:#EFE3C4;font-size:16px;line-height:34px;
   padding:0;text-align:center;-webkit-tap-highlight-color:transparent;}
 .aov-snd.off{opacity:.55;}
-.aov-pause{top:calc(env(safe-area-inset-top,0px) + 108px);font-size:14px;}
+.aov-pause{right:66px;top:calc(env(safe-area-inset-top,0px) + 26px);font-size:14px;}
 .aov-xr{top:calc(env(safe-area-inset-top,0px) + 150px);font-size:15px;display:none;}
 .aov-xr.on{display:block;}
 .aov-rage .t{fill:none;stroke:rgba(11,13,16,.55);stroke-width:3;}
@@ -392,6 +392,8 @@ export function createHud(root) {
     const b = document.createElement('button')
     b.type = 'button'
     b.className = 'aov-snd' + (initialMuted ? ' off' : '')
+    b.setAttribute('aria-label', initialMuted ? 'Unmute sound' : 'Mute sound')
+    b.setAttribute('aria-pressed', String(initialMuted))
     b.textContent = initialMuted ? '\u{1F507}' : '\u{1F50A}'
     for (const ev of ['pointerdown', 'pointerup', 'touchstart', 'mousedown']) {
       b.addEventListener(ev, (e) => e.stopPropagation())
@@ -401,6 +403,8 @@ export function createHud(root) {
       const m = onToggle()
       b.textContent = m ? '\u{1F507}' : '\u{1F50A}'
       b.classList.toggle('off', m)
+      b.setAttribute('aria-label', m ? 'Unmute sound' : 'Mute sound')
+      b.setAttribute('aria-pressed', String(m))
       b.blur()
     })
     root.appendChild(b)
@@ -416,7 +420,11 @@ export function createHud(root) {
     const b = document.createElement('button')
     b.type = 'button'
     b.className = 'aov-pause'
-    const set = (paused) => { b.textContent = paused ? '▶' : '⏸' }
+    const set = (paused) => {
+      b.textContent = paused ? '▶' : '⏸'
+      b.setAttribute('aria-label', paused ? 'Resume game' : 'Pause game')
+      b.setAttribute('aria-pressed', String(paused))
+    }
     set(false)
     for (const ev of ['pointerdown', 'pointerup', 'touchstart', 'mousedown']) {
       b.addEventListener(ev, (e) => e.stopPropagation())

@@ -37,8 +37,9 @@
  * rearing back to spit) around that same neutral.
  */
 import {
-  BoxGeometry, BufferAttribute, BufferGeometry, Color, SphereGeometry, TorusGeometry,
+  BoxGeometry, CylinderGeometry, BufferAttribute, BufferGeometry, Color, SphereGeometry, TorusGeometry,
 } from 'three'
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js'
 import { clamp } from '../util/math.js'
 
 /**
@@ -113,8 +114,8 @@ export const ENEMY_RIGS = {
 // blue army, red horde. The gun stays charcoal so the muzzle flash has
 // something dark to land on.
 const C_SOLDIER = {
-  body: 0x2f7fd8, helmet: 0x62b4ff, pack: 0x2560ad,
-  arm: 0x2c74c8, leg: 0x2868b8, boot: 0x1b3a63, gun: 0x24282e, gunHot: 0x3b4149,
+  body: 0x2f7fd8, helmet: 0x62b4ff, pack: 0x17344c,
+  arm: 0x2c74c8, leg: 0x244965, boot: 0x1b3a63, gun: 0x24282e, gunHot: 0x3b4149,
 }
 
 // One family, five values. The hue never separates the KINDS from each other --
@@ -142,6 +143,8 @@ const C_BOSS = {
 const _col = new Color()
 
 const box = (w, h, d) => new BoxGeometry(w, h, d)
+const limb = (w, h, d) => new CylinderGeometry(.5, .39, h, 8).scale(w, 1, d)
+const armor = (w, h, d) => new RoundedBoxGeometry(w, h, d, 1, Math.min(w, h, d) * .16)
 
 /** Low-segment sphere. Every extra ring costs `count` triangles per instance. */
 const ball = (r, wSeg, hSeg) => new SphereGeometry(r, wSeg, hSeg)
@@ -240,9 +243,10 @@ function pushLeg(parts, side, rig, dims, colors, H) {
   const shinH = rig.kneeY - dims.ankle
   const lid = side < 0 ? LIMB.LEG_L : LIMB.LEG_R
   const sid = side < 0 ? LIMB.SHIN_L : LIMB.SHIN_R
-  parts.push(tag(box(dims.thighW, thighH, dims.thighD)
+  const legShape = rig === SOLDIER_RIG ? limb : box
+  parts.push(tag(legShape(dims.thighW, thighH, dims.thighD)
     .translate(x, rig.kneeY + thighH * 0.5, 0), colors.leg, lid, H))
-  parts.push(tag(box(dims.shinW, shinH, dims.shinD)
+  parts.push(tag(legShape(dims.shinW, shinH, dims.shinD)
     .translate(x, dims.ankle + shinH * 0.5, 0), colors.leg, sid, H))
   parts.push(tag(box(dims.footW, dims.ankle + 0.02, dims.footD)
     .translate(x, (dims.ankle + 0.02) * 0.5, dims.footZ), colors.foot, sid, H))
@@ -276,16 +280,30 @@ export function buildSoldierGeometry() {
     ankle: 0.10, footW: 0.175, footD: 0.26, footZ: -0.035,
   }, { leg: c.leg, foot: c.boot }, H)
 
-  parts.push(tag(box(0.38, 0.20, 0.24).translate(0, 0.88, 0), c.body, LIMB.TORSO, H))
-  parts.push(tag(box(0.42, 0.46, 0.26).translate(0, 1.09, 0), c.body, LIMB.TORSO, H))
-  parts.push(tag(box(0.52, 0.13, 0.25).translate(0, 1.315, 0), c.body, LIMB.TORSO, H))
-  parts.push(tag(box(0.30, 0.28, 0.15).translate(0, 1.12, 0.155), c.pack, LIMB.TORSO, H))
+  parts.push(tag(armor(0.38, 0.20, 0.24).translate(0, 0.88, 0), c.body, LIMB.TORSO, H))
+  parts.push(tag(armor(0.42, 0.46, 0.26).translate(0, 1.09, 0), c.body, LIMB.TORSO, H))
+  parts.push(tag(armor(0.52, 0.13, 0.25).translate(0, 1.315, 0), c.body, LIMB.TORSO, H))
+  parts.push(tag(armor(0.30, 0.28, 0.15).translate(0, 1.12, 0.155), c.pack, LIMB.TORSO, H))
+  // High-contrast rear armor reads from the gameplay camera. All details
+  // remain in the existing merged mesh and follow the same limb shader.
+  parts.push(tag(armor(0.24, 0.19, 0.035).translate(0, 1.13, 0.245), 0x4d8fae, LIMB.TORSO, H))
+  parts.push(tag(box(0.16, 0.035, 0.04).translate(0, 1.18, 0.268), 0xb9efff, LIMB.TORSO, H))
+  parts.push(tag(box(0.43, 0.07, 0.29).translate(0, 0.89, 0), c.boot, LIMB.TORSO, H))
+  for (const side of [-1, 1]) {
+    parts.push(tag(ball(0.125, 6, 3).scale(1.05, 0.7, 1.2).translate(side * 0.255, 1.31, 0),
+      0x79b9db, side < 0 ? LIMB.ARM_L : LIMB.ARM_R, H))
+    parts.push(tag(box(0.075, 0.13, 0.10).translate(side * 0.19, 0.98, 0.13),
+      0x162c41, LIMB.TORSO, H))
+  }
   // The antenna costs 12 tris and is the only thing that breaks the flat top
   // line of the crowd when forty helmets overlap.
   parts.push(tag(box(0.032, 0.34, 0.032).translate(0.10, 1.44, 0.17), c.gun, LIMB.TORSO, H))
 
   parts.push(tag(box(0.19, 0.17, 0.19).translate(0, 1.45, 0), c.body, LIMB.HEAD, H))
-  parts.push(tag(dome(0.145, 8, 2).scale(1, 1.17, 1).translate(0, 1.53, 0), c.helmet, LIMB.HEAD, H))
+  parts.push(tag(dome(0.17, 12, 4).scale(1, 1.17, 1).translate(0, 1.53, 0), c.helmet, LIMB.HEAD, H))
+
+  parts.push(tag(box(0.22, 0.075, 0.045).translate(0, 1.49, -0.11), 0x102632, LIMB.HEAD, H))
+  parts.push(tag(box(0.055, 0.035, 0.21).translate(0, 1.665, 0), 0xc5eeff, LIMB.HEAD, H))
 
   // The firing arm is SHORT -- a stub bent at the elbow, tucked in at the grip;
   // the support arm is long and CROSSES the chest to the fore-end. That
@@ -301,15 +319,24 @@ export function buildSoldierGeometry() {
   // (0.20, 1.19, -0.21) and the support hand on the fore-end at (0.20, 1.20,
   // -0.40). A hand floating next to its weapon is the tell that the gun is a
   // separate mesh, and it is visible at any distance the gun itself is.
-  parts.push(tag(pivotX(box(0.115, 0.22, 0.115).translate(sx, sy - 0.11, 0), sx, sy, 0, 1.10),
+  parts.push(tag(pivotX(limb(0.14, 0.22, 0.14).translate(sx, sy - 0.11, 0), sx, sy, 0, 1.10),
     c.arm, LIMB.ARM_R, H))
   parts.push(tag(pivotX(box(0.105, 0.12, 0.13).translate(sx, sy - 0.25, 0), sx, sy, 0, 1.10),
     c.boot, LIMB.ARM_R, H))
-  parts.push(tag(pivotZ(pivotX(box(0.11, 0.58, 0.11).translate(-sx, sy - 0.29, 0), -sx, sy, 0, 0.71),
+  parts.push(tag(pivotZ(pivotX(limb(0.135, 0.58, 0.135).translate(-sx, sy - 0.29, 0), -sx, sy, 0, 0.71),
     -sx, sy, 0, 1.34), c.arm, LIMB.ARM_L, H))
   parts.push(tag(pivotZ(pivotX(box(0.105, 0.12, 0.13).translate(-sx, sy - 0.62, 0), -sx, sy, 0, 0.71),
     -sx, sy, 0, 1.34), c.boot, LIMB.ARM_L, H))
 
+  // Separate breastplate, harness and articulated greaves.
+  parts.push(tag(armor(.34, .30, .085).translate(0, 1.13, -.155), 0x5a9dbb, LIMB.TORSO, H))
+  for (const side of [-1, 1]) {
+    parts.push(tag(box(.045, .36, .035).translate(side * .135, 1.12, -.21), 0x19364b, LIMB.TORSO, H))
+    parts.push(tag(armor(.15, .13, .085).translate(side * r.legX, .44, -.092),
+      0x74a8c0, side < 0 ? LIMB.SHIN_L : LIMB.SHIN_R, H))
+    parts.push(tag(armor(.125, .18, .04).translate(side * r.legX, .27, -.083),
+      0x416b87, side < 0 ? LIMB.SHIN_L : LIMB.SHIN_R, H))
+  }
   return merge(parts)
 }
 
@@ -518,6 +545,16 @@ export function buildWalkerGeometry() {
   parts.push(tag(pivotZ(pivotX(box(0.13, 0.16, 0.15).translate(sx, sy - 0.61, 0), sx, sy, 0, -1.08),
     sx, sy, 0, 0.24), C_Z.dark, LIMB.ARM_R, H))
 
+  for (const side of [-1, 1]) {
+    parts.push(tag(pivotX(box(.06, .04, .025).translate(side * .062, 1.63, .348), 0, hip, 0, hunch),
+      0xffd188, LIMB.HEAD, H))
+  }
+  parts.push(tag(pivotX(box(.13, .047, .035).translate(0, 1.54, .335), 0, hip, 0, hunch),
+    0x342735, LIMB.HEAD, H))
+  for (let i = 0; i < 3; i++) {
+    parts.push(tag(pivotX(box(.31 - i * .04, .035, .035).translate(0, 1.40 - i * .10, .164), 0, hip, 0, hunch),
+      0xdda3a0, LIMB.TORSO, H))
+  }
   return merge(parts)
 }
 

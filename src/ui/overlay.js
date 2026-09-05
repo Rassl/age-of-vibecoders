@@ -36,19 +36,27 @@ const ROWS = ['PEAK SQUAD', 'KILLS', 'BUBBLES TAKEN', 'BARRELS BREACHED', 'WEAPO
 
 const STYLE_ID = 'aov-overlay-style'
 const CSS = `
+.aov-insignia{margin:0 auto 24px;width:64px;height:70px;display:grid;place-items:center;
+  border:1px solid #e0c9a0;color:#e0c9a0;font-size:32px;font-weight:900;
+  clip-path:polygon(0 0,100% 0,100% 76%,50% 100%,0 76%);background:rgba(224,201,160,.09);}
+.aov-briefing{display:flex;margin-top:28px;border-top:1px solid #e0c9a033;padding-top:18px;gap:14px;}
+.aov-brief-item{flex:1;text-align:left;}
+.aov-brief-number{font:11px ui-monospace,monospace;color:#e0c9a0;margin-bottom:7px;}
+.aov-brief-label{font-size:11px;color:#a9b2b8;line-height:1.5;}
+
 .aov-scrim{position:absolute;inset:0;display:grid;place-items:center;
   pointer-events:auto;   /* the whole card IS the button; see hide() */
   padding:calc(env(safe-area-inset-top,0px) + 24px) calc(env(safe-area-inset-right,0px) + 20px)
           calc(env(safe-area-inset-bottom,0px) + 28px) calc(env(safe-area-inset-left,0px) + 20px);
   background:
     radial-gradient(120% 62% at 50% 86%,rgba(224,201,160,.22),rgba(224,201,160,0) 62%),
-    linear-gradient(180deg,rgba(11,13,16,.94) 0%,rgba(30,23,18,.90) 54%,rgba(11,13,16,.96) 100%);}
-.aov-card{width:min(92vw,430px);text-align:center;color:#F4F1EA;
+    linear-gradient(180deg,rgba(9,18,24,.90) 0%,rgba(12,22,28,.76) 54%,rgba(9,18,24,.97) 100%);}
+.aov-card{width:min(100%,430px);text-align:center;color:#F4F1EA;
   animation:aov-rise 260ms cubic-bezier(.16,.9,.3,1) both;}
 @keyframes aov-rise{from{opacity:0;transform:translate3d(0,14px,0)}to{opacity:1;transform:none}}
 .aov-eyebrow{font-size:11px;letter-spacing:.46em;text-indent:.46em;color:#C2A878;}
-.aov-title{font-size:clamp(34px,11.5vw,58px);line-height:.94;font-weight:700;
-  letter-spacing:.02em;margin:10px 0 0;text-shadow:0 3px 0 rgba(0,0,0,.5);}
+.aov-title{font-size:clamp(34px,11.5vw,58px);line-height:.94;font-weight:900;
+  letter-spacing:-.045em;margin:10px 0 0;text-shadow:0 3px 0 rgba(0,0,0,.5);}
 .aov-title.fail{color:#E5484D;}
 .aov-title.win{color:#E0C9A0;}
 .aov-rule{height:2px;margin:16px 0;background:linear-gradient(90deg,
@@ -91,13 +99,15 @@ const CSS = `
 @keyframes aov-swipe{0%,100%{transform:translateX(-22px)}50%{transform:translateX(22px)}}
 @keyframes aov-nudge-l{0%,100%{transform:translateX(-6px);opacity:1}50%{transform:none;opacity:.45}}
 @keyframes aov-nudge-r{0%,100%{transform:none;opacity:.45}50%{transform:translateX(6px);opacity:1}}
-.aov-tap{margin-top:26px;font-size:13px;font-weight:700;letter-spacing:.34em;
-  text-indent:.34em;color:#E0C9A0;animation:aov-pulse 1.5s ease-in-out infinite;}
+.aov-tap{padding:18px 14px;background:#e0c9a0;border-radius:3px;margin-top:26px;font-size:13px;font-weight:700;letter-spacing:.34em;
+  text-indent:.34em;color:#101b23;cursor:pointer;box-shadow:0 8px 30px #0005;}
 .aov-round{display:inline-block;margin-top:14px;padding:5px 14px 6px;
   font-size:11px;font-weight:700;letter-spacing:.3em;text-indent:.3em;
   color:#E0C9A0;border:1px solid rgba(224,201,160,.45);}
 .aov-round:empty{display:none;}
 .aov-round + .aov-btn{margin-top:14px;}
+@media(max-height:650px){.aov-insignia,.aov-briefing{display:none}.aov-arrows{margin-top:10px}.aov-tap{margin-top:16px}.aov-title{font-size:38px}}
+@media(prefers-reduced-motion:reduce){.aov-card,.aov-btn,.aov-arrows span,.aov-arrows div{animation:none!important}}
 @keyframes aov-pulse{0%{opacity:.32}50%{opacity:1}100%{opacity:.32}}
 `
 
@@ -163,7 +173,8 @@ export function createOverlay(root, onStart, onRestart, onReplay) {
   const scrim = div('aov-scrim', root)
 
   // --- start card
-  const startCard = div('aov-card', scrim)
+  const startCard = div('aov-card aov-start', scrim)
+  div('aov-insignia', startCard, 'III')
   div('aov-eyebrow', startCard, 'CORRIDOR ASSAULT')
   div('aov-title', startCard, 'AGE OF VIBECODERS')
   div('aov-rule', startCard)
@@ -174,7 +185,14 @@ export function createOverlay(root, onStart, onRestart, onReplay) {
   div('l', arrows, '\u25C0')
   div('f', arrows, '\u{1F446}')
   div('r', arrows, '\u25B6')
-  div('aov-tap', startCard, 'TAP TO DEPLOY')
+  div('aov-tap', startCard, 'DEPLOY SQUAD  →')
+  div('aov-hint', startCard, 'DRAG / A D TO STEER · ENTER TO DEPLOY')
+  const briefing = div('aov-briefing', startCard)
+  for (const [number, label] of [['01', 'Break the barrels'], ['02', 'Build your squad'], ['03', 'Defeat the boss']]) {
+    const item = div('aov-brief-item', briefing)
+    div('aov-brief-number', item, number)
+    div('aov-brief-label', item, label)
+  }
 
   // --- end card, built once: showEnd() only rewrites text nodes, so a restart
   //     never constructs or discards a node.

@@ -40,7 +40,7 @@
   /* The mode is designed around a tall, narrow corridor. On a wide window we
      letterbox to a portrait stage rather than showing acres of empty desert with
      the squad as a speck in the middle. */
-  #app { position: fixed; inset: 0; background: #0b0d10;
+  #app { position: fixed; inset: 0; background: radial-gradient(ellipse at center,#24333b 0%,#10191f 48%,#080d11 100%);
          display: flex; align-items: center; justify-content: center; }
   #stage { position: relative; overflow: hidden;
            box-shadow: 0 0 0 1px #1c2026, 0 20px 80px rgba(0,0,0,.6); }
@@ -51,7 +51,7 @@
   #vignette { position: absolute; inset: 0; pointer-events: none; z-index: 5;
               background:
                 radial-gradient(140% 105% at 50% 42%, transparent 58%, rgba(8,6,4,.32) 100%),
-                linear-gradient(rgba(8,6,4,.10), transparent 14%); }
+                linear-gradient(rgba(6,16,24,.82), rgba(6,16,24,.24) 12%, transparent 24%); }
   #hud { position: absolute; inset: 0; pointer-events: none; z-index: 10; }
   #overlay { position: absolute; inset: 0; z-index: 20; display: grid; place-items: center; }
 </style>

@@ -207,6 +207,24 @@ both are why the rules above are written down:
   the pair beat's gating mechanic for the entire back half of a run. Pierce now cuts through
   bodies only (`castRay` breaks on any non-zombie blocker).
 
+## Immersive view (Apple Vision Pro, WebXR)
+
+On a browser that reports `immersive-vr` support (visionOS Safari does), a headset button
+appears under the pause control. It starts a WebXR session that puts you ON THE ROAD, a few
+metres behind the squad at human scale, on a low platform that follows the squad sideways
+(`CFG.xr`). The head is the camera: the flat rig's follow, dolly, roll, FOV kicks and shake
+are all bypassed in a session, because camera motion the player did not make is the one
+thing a headset cannot forgive. You steer with a pinch-drag — look at the road, pinch, move
+your hand — which is fed to the same input accumulator as the touch drag, in world units.
+A plain pinch deploys on the title state and retries after a run, since the DOM cards are
+not visible inside a session. Leave the session and the flat camera snaps back.
+
+The module is `src/xr/immersive.js`. For it to work at all the game loop had to move from
+raw `requestAnimationFrame` onto `renderer.setAnimationLoop` (`core/loop.js` takes a
+driver): XR frames only exist inside the session's own callback. Not yet exercised on a
+headset — the flat path and a refused session are covered by a browser test; the first
+on-device pass will want `standZ`, `standY` and `dragGain` tuned by feel.
+
 ## The harness
 
 ```bash
@@ -349,6 +367,12 @@ trademark of its respective owner and is referenced here only to describe, factu
 what genre of mode this project reimplements. This project copies none of that game's
 expression — no art, audio, code, text, character names or logos — only the shape of a
 well-known arcade format.
+
+The wings pickup is an energy-drink can whose baked label carries the Red Bull name and
+colour layout as a visual joke on "gives you wings". Red Bull is a trademark of Red Bull
+GmbH, which has no connection to this project; the label is drawn procedurally
+(`view/props.js bakeCanLabel`) and uses none of the company's artwork. Swap it for your own
+via `CFG.wings.labelUrl` before distributing.
 
 ## License
 

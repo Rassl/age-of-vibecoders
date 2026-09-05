@@ -3,3 +3,5 @@ dist/
 .DS_Store
 *.local
 assets-src/
+certs/
+public/mkcert-rootCA.pem

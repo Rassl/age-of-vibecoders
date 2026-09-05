@@ -7,6 +7,7 @@
   "description": "Age of Vibecoders \u2014 a squad lane-runner shooter built in three.js",
   "scripts": {
     "dev": "vite",
+    "dev:https": "HTTPS=1 vite",
     "build": "vite build",
     "preview": "vite preview"
   },

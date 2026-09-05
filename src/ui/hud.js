@@ -82,13 +82,15 @@ const CSS = `
 .aov-rage{position:absolute;right:10px;width:32px;height:32px;opacity:0;
   top:calc(env(safe-area-inset-top,0px) + 24px);
   transition:opacity 220ms ease;will-change:opacity;}
-.aov-snd,.aov-pause{position:absolute;right:10px;width:34px;height:34px;
+.aov-snd,.aov-pause,.aov-xr{position:absolute;right:10px;width:34px;height:34px;
   top:calc(env(safe-area-inset-top,0px) + 66px);
   pointer-events:auto;cursor:pointer;border:0;border-radius:50%;
   background:rgba(11,13,16,.45);color:#EFE3C4;font-size:16px;line-height:34px;
   padding:0;text-align:center;-webkit-tap-highlight-color:transparent;}
 .aov-snd.off{opacity:.55;}
 .aov-pause{top:calc(env(safe-area-inset-top,0px) + 108px);font-size:14px;}
+.aov-xr{top:calc(env(safe-area-inset-top,0px) + 150px);font-size:15px;display:none;}
+.aov-xr.on{display:block;}
 .aov-rage .t{fill:none;stroke:rgba(11,13,16,.55);stroke-width:3;}
 .aov-rage .a{fill:none;stroke:#E0C9A0;stroke-width:3;}
 .aov-rage.raging .a{stroke:#E5484D;animation:aov-blink .48s steps(2,end) infinite;}
@@ -428,5 +430,31 @@ export function createHud(root) {
     return { el: b, set }
   }
 
-  return { sync, pulseCount, flashDamage, soundButton, pauseButton, reset, dispose }
+  /**
+   * Immersive (WebXR) entry button, below pause. Hidden until the caller
+   * confirms support with `show()`; a headset icon that does nothing on a
+   * phone would read as a broken control.
+   */
+  function xrButton(onClick) {
+    const b = document.createElement('button')
+    b.type = 'button'
+    b.className = 'aov-xr'
+    b.textContent = '\u{1F97D}'
+    b.title = 'Enter immersive view'
+    for (const ev of ['pointerdown', 'pointerup', 'touchstart', 'mousedown']) {
+      b.addEventListener(ev, (e) => e.stopPropagation())
+    }
+    b.addEventListener('click', (e) => {
+      e.stopPropagation()
+      onClick()
+      b.blur()
+    })
+    root.appendChild(b)
+    return {
+      show(on) { b.classList.toggle('on', !!on) },
+      el: b,
+    }
+  }
+
+  return { sync, pulseCount, flashDamage, soundButton, pauseButton, xrButton, reset, dispose }
 }

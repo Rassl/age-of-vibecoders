@@ -17,6 +17,9 @@ export class Input {
   constructor(canvas) {
     this.canvas = canvas
     this.dxPx = 0
+    // Drag already expressed in WORLD units, from sources with no pixels behind
+    // them (the immersive pinch-drag in xr/immersive.js). Drained with dxPx.
+    this.dxWorld = 0
     this.dragging = false
     this.pointerId = -1
     this.lastX = 0
@@ -114,9 +117,15 @@ export class Input {
    * frame. Returns world units.
    */
   drainDx() {
-    const world = this.dxPx * CFG.derived.dragGain
+    const world = this.dxPx * CFG.derived.dragGain + this.dxWorld
     this.dxPx = 0
+    this.dxWorld = 0
     return world
+  }
+
+  /** Accumulate a steering delta already in world units (see dxWorld). */
+  pushWorldDx(d) {
+    if (this.enabled && Number.isFinite(d)) this.dxWorld += d
   }
 
   /**
@@ -134,6 +143,7 @@ export class Input {
 
   reset() {
     this.dxPx = 0
+    this.dxWorld = 0
     this.dragging = false
     this.pointerId = -1
     this.active.clear()

@@ -10,6 +10,7 @@ import * as THREE from 'three'
 import { CFG, deriveConfig, validateConfig } from './config.js'
 import { Loop } from './core/loop.js'
 import { Input } from './core/input.js'
+import { createImmersive } from './xr/immersive.js'
 import { bus, T } from './core/bus.js'
 import { createWorld, STATE, MODE } from './sim/world.js'
 import { startRun } from './sim/run.js'
@@ -181,7 +182,12 @@ function applyRound() {
 }
 applyRound()
 
-const loop = new Loop(step, render, beforeStep)
+// The renderer drives the frame loop (not raw rAF) so that an immersive WebXR
+// session can take it over: XR frames exist only inside the session's callback.
+const loop = new Loop(step, render, beforeStep, {
+  start: (fn) => renderer.setAnimationLoop(fn),
+  stop: () => renderer.setAnimationLoop(null),
+})
 
 wireReactions({ loop, camera: cameraRig, particles, tracers, rings, hud, audio, world, blasts, turret })
 
@@ -281,6 +287,21 @@ input.onRestart = () => {
   if (world.state === STATE.WON || world.state === STATE.LOST) onRestart()
 }
 
+// ---------------------------------------------------------- immersive view ---
+
+const xr = createImmersive({
+  renderer, scene, camera, world, input, onStart, onRestart,
+  onEnter() { audio.resume() },
+  onExit() {
+    // Back on the flat screen: the rig snaps the camera to its pose and the
+    // canvas is re-fitted (setSize is refused while presenting).
+    cameraRig.reset(world)
+    resize()
+  },
+})
+const xrBtn = hud.xrButton(() => { xr.enter() })
+xr.supported().then((ok) => xrBtn.show(ok))
+
 // ----------------------------------------------------------------- frames ---
 
 /**
@@ -294,6 +315,8 @@ input.onRestart = () => {
  * barrel explodes.
  */
 function beforeStep() {
+  // The pinch-drag is read here, inside the XR frame, before the drain.
+  if (xr.presenting) xr.poll()
   pendingDx += input.drainDx()
   // Sampled once per frame so every substep of that frame agrees on the
   // direction; a key released mid-frame must not steer for half of it.
@@ -329,7 +352,9 @@ function render(rawDt, scaledDt, alpha, frameMs) {
   // Draw the world eased between sim steps, then hand the true values back.
   const interpolated = applyInterpolation(world, alpha)
 
-  cameraRig.sync(world, rawDt, scaledDt, alpha)
+  // In a headset the head is the camera: the rig only moves the platform.
+  if (xr.presenting) xr.sync(world, rawDt)
+  else cameraRig.sync(world, rawDt, scaledDt, alpha)
   corridor.sync(world, rawDt)
   characters.sync(world, rawDt, camera)
   props.sync(world, rawDt, camera)
@@ -353,7 +378,7 @@ function render(rawDt, scaledDt, alpha, frameMs) {
   if (import.meta.env && import.meta.env.DEV) window.__drawDistance = world.distance
   renderer.render(scene, camera)
   restoreInterpolation(world, interpolated)
-  governDPR(performance.now() - t0)
+  if (!xr.presenting) governDPR(performance.now() - t0)
 }
 
 // The real ceiling in this build is FILL RATE, not entity count, and DPR 2 on a
@@ -398,6 +423,8 @@ const STAGE_MIN_ASPECT = 0.46   // tallest we go (a very tall phone)
 const STAGE_MAX_ASPECT = 0.72   // widest before we letterbox
 
 function resize() {
+  // The XR layer owns the framebuffer while presenting; three refuses setSize.
+  if (xr.presenting) return
   const winW = window.innerWidth
   const winH = window.innerHeight
   const target = Math.min(Math.max(winW / winH, STAGE_MIN_ASPECT), STAGE_MAX_ASPECT)

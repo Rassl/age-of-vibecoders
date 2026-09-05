@@ -499,6 +499,28 @@ export const CFG = {
     bubbleScale: 1.4,
   },
 
+  /**
+   * Immersive view (WebXR, Apple Vision Pro and any immersive-vr browser).
+   * You stand on the road a few metres behind the squad at human scale and
+   * steer with a pinch-drag; the flat camera's follow, dolly, shake and FOV
+   * kicks are all switched off because a headset owns its own camera.
+   */
+  xr: {
+    // Where the viewer stands: the rig origin is the FLOOR under their feet
+    // (local-floor reference space), so eye height comes from the headset.
+    standZ: 7.0,
+    standY: 0.9,          // a low truck bed: over the helmets, not among them
+    // Lateral follow of the squad, softer than the flat camera: sideways
+    // vection is the least comfortable motion in a headset.
+    followFactor: 0.35,
+    followTau: 0.35,
+    // Steering: world units of squad travel per metre the pinch travels on a
+    // plane `dragPlaneZ` metres in front of the viewer.
+    dragGain: 2.6,
+    dragPlaneZ: 2.0,
+    near: 0.08,
+  },
+
   pool: {
     soldiers: 256, joiners: 48, zombies: 220, props: 12, shockwaves: 12,
     impacts: 256, tracers: 256, muzzle: 32, particles: 4096, glyphs: 96, spits: 48,

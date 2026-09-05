@@ -8,12 +8,29 @@
  */
 import { CFG, FIXED_DT } from '../config.js'
 
+/**
+ * Default frame source: window.requestAnimationFrame, self-rescheduling. The
+ * game passes a renderer-backed driver instead (renderer.setAnimationLoop), so
+ * an immersive WebXR session can take the loop over -- XR frames only exist
+ * inside the session's own animation callback, and rAF would render nothing.
+ */
+export function rafDriver() {
+  let id = 0
+  let fn = null
+  const tick = (now) => { id = requestAnimationFrame(tick); fn(now) }
+  return {
+    start(f) { fn = f; id = requestAnimationFrame(tick) },
+    stop() { cancelAnimationFrame(id) },
+  }
+}
+
 export class Loop {
-  constructor(step, render, beforeStep) {
+  constructor(step, render, beforeStep, driver) {
     this.step = step
     this.render = render
     // Called ONCE per frame before any substep -- this is where input is drained.
     this.beforeStep = beforeStep || null
+    this.driver = driver || rafDriver()
     this.accumulator = 0
     this.last = 0
     this.running = false
@@ -32,12 +49,12 @@ export class Loop {
     if (this.running) return
     this.running = true
     this.last = performance.now()
-    this.rafId = requestAnimationFrame(this._tick)
+    this.driver.start(this._tick)
   }
 
   stop() {
     this.running = false
-    cancelAnimationFrame(this.rafId)
+    this.driver.stop()
   }
 
   /** Freeze time briefly for impact. Strongest wins; never stacks additively. */
@@ -66,7 +83,6 @@ export class Loop {
 
   _tick(now) {
     if (!this.running) return
-    this.rafId = requestAnimationFrame(this._tick)
 
     // Clamp BOTH ends. The upper bound is the backgrounded-tab guard; the lower
     // bound matters just as much and was missing. `now` is a rAF timestamp and

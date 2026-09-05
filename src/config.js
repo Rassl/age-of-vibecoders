@@ -473,6 +473,32 @@ export const CFG = {
     boltLife: 2.0,
   },
 
+  /**
+   * Wings -- the energy-can pickup. Breaking the bubble lifts the whole squad
+   * off the road for `duration` seconds: nothing on the road can reach it
+   * (zombie contact, acid, boss shockwaves) while it keeps firing. Barrels
+   * and gate rows still resolve -- the pickup is an answer to the HORDE, not
+   * a skip button for the economy.
+   */
+  wings: {
+    duration: 10,
+    // Altitude of the airborne formation, in world units. Clear of every body
+    // (the brute is 2.1u) so the squad visibly passes OVER the crowd.
+    height: 2.6,
+    // Rise and settle time constant. Owned by the SIM (w.altitude) so tracers,
+    // muzzle flashes and the view all lift together.
+    riseTau: 0.35,
+    flapHz: 3.2,
+    // Optional label artwork for the can, e.g. 'textures/can-label.png' under
+    // public/ -- u wraps around the can, v runs bottom to top. null uses the
+    // stylised label baked at boot (view/props.js bakeCanLabel).
+    labelUrl: null,
+    // The wings bubble is drawn this much bigger than the others (view/props.js
+    // WINGS_BUBBLE_SCALE reads it), and its hit width grows to match so bullets
+    // aimed at the visible shell actually land.
+    bubbleScale: 1.4,
+  },
+
   pool: {
     soldiers: 256, joiners: 48, zombies: 220, props: 12, shockwaves: 12,
     impacts: 256, tracers: 256, muzzle: 32, particles: 4096, glyphs: 96, spits: 48,

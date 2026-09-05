@@ -156,6 +156,10 @@ function pivotX(g, px, py, pz, a) {
   g.translate(-px, -py, -pz); g.rotateX(a); g.translate(px, py, pz); return g
 }
 
+function pivotY(g, px, py, pz, a) {
+  g.translate(-px, -py, -pz); g.rotateY(a); g.translate(px, py, pz); return g
+}
+
 function pivotZ(g, px, py, pz, a) {
   g.translate(-px, -py, -pz); g.rotateZ(a); g.translate(px, py, pz); return g
 }
@@ -306,6 +310,62 @@ export function buildSoldierGeometry() {
   parts.push(tag(pivotZ(pivotX(box(0.105, 0.12, 0.13).translate(-sx, sy - 0.62, 0), -sx, sy, 0, 0.71),
     -sx, sy, 0, 1.34), c.boot, LIMB.ARM_L, H))
 
+  return merge(parts)
+}
+
+// ----------------------------------------------------------------- wings ---
+
+/**
+ * Where the wings hinge on the soldier: between the shoulder blades, on the
+ * pack. Exported because the flap in characters.js pivots about the same point.
+ */
+export const WING_PIVOT = { x: 0.12, y: 1.27, z: 0.17 }
+
+// Feathered, off-white with a cold blue tint so they read as WINGS against the
+// cobalt kit, not as a pale backpack. Tagged EXTRA so the shader's per-kind
+// slot can flap them (WING_FLAP_EXTRA in characters.js).
+const C_WING = { feather: 0xF1F4FA, tip: 0xD5E2FA, bone: 0xC7D3E6 }
+
+/**
+ * A pair of wings in soldier model space, ~90 tris. Three feathers per side
+ * fan back and out from the pivot; the leading bone is the thick edge that
+ * keeps the silhouette readable when the feathers foreshorten mid-flap.
+ * Each side sits entirely on its own sign of x, which is how the shader tells
+ * left from right.
+ */
+export function buildWingGeometry() {
+  const H = SOLDIER_RIG.height
+  const parts = []
+  const pv = WING_PIVOT
+  for (const side of [-1, 1]) {
+    const px = side * pv.x
+    // Bone: the leading edge, from the pivot straight out along x.
+    parts.push(tag(box(0.78, 0.055, 0.07).translate(px + side * 0.39, pv.y, pv.z),
+      C_WING.bone, LIMB.EXTRA, H))
+    // Feathers: flat slabs trailing BACK (+Z) from the bone, overlapping into
+    // one surface. The camera sits high and behind, so the wing has to read
+    // in plan: wide across x, long along z, and thin. Secondaries are the
+    // longest, the tip the shortest and most swept.
+    const feathers = [
+      { at: 0.12, len: 0.36, rake: 0.00 },
+      { at: 0.30, len: 0.44, rake: 0.10 },
+      { at: 0.48, len: 0.40, rake: 0.24 },
+      { at: 0.66, len: 0.30, rake: 0.42 },
+    ]
+    for (let i = 0; i < feathers.length; i++) {
+      const f = feathers[i]
+      const col = i === feathers.length - 1 ? C_WING.tip : C_WING.feather
+      const g = box(0.21, 0.025, f.len)
+        .translate(px + side * f.at, pv.y - 0.035, pv.z + 0.03 + f.len * 0.5)
+      // Rake each feather about its own root on the bone so the tips sweep
+      // back, then DROOP the whole surface about the bone: a wing that lies
+      // perfectly flat foreshortens to a line from the road-level angles the
+      // gallery and the low camera shots use, while a 30-degree hang keeps
+      // the trailing edge visible from behind and still reads in plan.
+      pivotY(g, px + side * f.at, pv.y, pv.z, side * f.rake)
+      parts.push(tag(pivotX(g, px, pv.y, pv.z, 0.55), col, LIMB.EXTRA, H))
+    }
+  }
   return merge(parts)
 }
 

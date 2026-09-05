@@ -75,6 +75,10 @@ const CSS = `
   top:calc(env(safe-area-inset-top,0px) + 26px);
   letter-spacing:.34em;text-indent:.34em;color:#E0C9A0;opacity:0;
   will-change:opacity;text-shadow:0 1px 3px rgba(0,0,0,.8);}
+.aov-wings{position:absolute;left:0;right:0;text-align:center;font-size:11px;
+  top:calc(env(safe-area-inset-top,0px) + 44px);
+  letter-spacing:.30em;text-indent:.30em;color:#8FEFFF;opacity:0;
+  will-change:opacity;text-shadow:0 1px 3px rgba(0,0,0,.8);}
 .aov-rage{position:absolute;right:10px;width:32px;height:32px;opacity:0;
   top:calc(env(safe-area-inset-top,0px) + 24px);
   transition:opacity 220ms ease;will-change:opacity;}
@@ -197,6 +201,7 @@ export function createHud(root) {
   const fill = div('aov-fill', bar)
   const dist = div('aov-dist', gate)
   const wep = div('aov-wep', gate)
+  const wingsEl = div('aov-wings', gate)
   const countBox = div('aov-count', gate)
   const countN = div('aov-count-n', countBox)
   div('aov-count-cap', countBox).textContent = 'SQUAD'
@@ -231,6 +236,7 @@ export function createHud(root) {
   const rChip = track(chip)
   const rDist = track(dist)
   const rWep = track(wep)
+  const rWings = track(wingsEl)
   const rCount = track(countN)
   const rRage = track(rageSvg)
   const rArc = track(rageArc)
@@ -330,6 +336,11 @@ export function createHud(root) {
 
     writeText(rWep, wepName)
     writeOpacity(rWep, q100(wepOp))
+
+    // Wings countdown. Whole seconds: a tenths readout repaints every frame.
+    const flying = w.wings > 0
+    if (flying) writeText(rWings, 'WINGS ' + Math.ceil(w.wings) + 'S')
+    writeOpacity(rWings, flying ? 1 : 0)
 
     writeNum(rCount, w.count)
     writeScale(rCount, q100(1 + PUNCH_AMP * punch))

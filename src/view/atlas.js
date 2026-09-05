@@ -22,9 +22,10 @@ import {
 /**
  * Digits, the four arithmetic marks, and the letter union of every word the view
  * can print: MINIGUN / SHOTGUN / RIFLE / PISTOL / MISSED, plus A and K so a future
- * 'MAX' or '2K' does not force a re-bake. 31 glyphs into 64 cells.
+ * 'MAX' or '2K' does not force a re-bake, and W/Y for the wings badge ('FLY').
+ * 33 glyphs into 64 cells.
  */
-export const GLYPH_CHARS = '0123456789+-x%MINGUSHOTRFLEDPAK'
+export const GLYPH_CHARS = '0123456789+-x%MINGUSHOTRFLEDPAKWY'
 
 const SIZE = 512
 const COLS = 8

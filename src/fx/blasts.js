@@ -206,6 +206,15 @@ export function createBlasts(deps) {
     if (rings) rings.addShockRing(x, z, 0.2, up ? 1.9 : 1.2, 0.30, TONE_CYAN)
   }
 
+  /** The squad taking off on wings: one big cyan ring under the formation. */
+  function wingsUp(x, y, z) {
+    if (particles) {
+      particles.burst('glint', x, y, z, 18)
+      particles.burst('spark', x, 0.4, z, 12)
+    }
+    if (rings) rings.addShockRing(x, z, 0.4, 3.0, 0.45, TONE_CYAN)
+  }
+
   /** The spitter rearing back. Loud and early -- the windup IS the mechanic. */
   function spitWindup(x, y, z) {
     if (particles) particles.burst('bile', x, y, z, 4)
@@ -251,6 +260,6 @@ export function createBlasts(deps) {
   return {
     impact, kill, bloater, barrel, breach, bubble,
     spitLand, spitWindup, spitFire, bossDeath, bossPlate,
-    boltBurst, droneBeacon,
+    boltBurst, droneBeacon, wingsUp,
   }
 }

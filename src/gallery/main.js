@@ -21,18 +21,21 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js'
 import { CFG } from '../config.js'
 import {
-  ANIM, GUN_SPIN_EXTRA, KINDS, KIND_TINT, charShader, enemyShaderOpts,
+  ANIM, GUN_SPIN_EXTRA, KINDS, KIND_TINT, WING_FLAP_EXTRA, charShader, enemyShaderOpts,
 } from '../view/characters.js'
 import {
   BOSS_RIG, ENEMY_RIGS, GUN_POSES, SOLDIER_RIG,
   buildBloaterGeometry, buildBossGeometry, buildBruteGeometry, buildGunGeometries,
   buildRunnerGeometry, buildSoldierGeometry, buildSpitterGeometry, buildWalkerGeometry,
+  buildWingGeometry,
 } from '../view/geometry.js'
 import { createBossHead } from '../view/bosshead.js'
 import {
-  buildDroneToken, buildMinigun, buildNarrowClusterGeometry, buildSoldierTrio,
-  buildWallClusterGeometry,
+  bakeCanLabel, buildDroneToken, buildEnergyCan, buildMinigun, buildNarrowClusterGeometry,
+  buildSoldierTrio, buildWallClusterGeometry, createLabelledContentMaterial, createProps,
 } from '../view/props.js'
+import { createGates } from '../view/gates.js'
+import { createGlyphAtlas } from '../view/atlas.js'
 import { buildDroneHullGeometry } from '../view/drones.js'
 import { buildWatermelonGeometry } from '../fx/melons.js'
 import { WEAPONS } from '../data/weapons.js'
@@ -52,10 +55,24 @@ const U = {
   uSpin: { value: 0 },
 }
 
-function charMesh(geo, rig, anim, opt, emissive) {
+// The wings' own set: aPhase is the FLAP and aGait the spread on that
+// material, so they cannot share the walk-cycle values above. Flash, drive
+// and the arm pose are the same objects, so recoil and hit flash stay in sync.
+const UW = {
+  aPhase: { value: 0 },
+  aFlash: U.aFlash,
+  aDrive: U.aDrive,
+  aGait: { value: 1 },
+  aTint: { value: new Color(1, 1, 1) },
+  uTime: U.uTime,
+  uArm: U.uArm,
+  uSpin: U.uSpin,
+}
+
+function charMesh(geo, rig, anim, opt, emissive, uniforms = U) {
   const mat = charShader(
     new MeshLambertMaterial({ vertexColors: true, flatShading: true, emissive }),
-    rig, anim, { ...opt, instanced: false, uniforms: U },
+    rig, anim, { ...opt, instanced: false, uniforms },
   )
   const mesh = new Mesh(geo, mat)
   mesh.castShadow = true
@@ -91,6 +108,26 @@ entries.push({
     gun.name = 'gun'
     g.add(gun)
     return g
+  },
+})
+
+entries.push({
+  group: 'Squad', name: 'Soldier (wings)', hz: 0, tint: [1, 1, 1], tierPick: true, facing: Math.PI,
+  note: 'energy-can pickup: airborne 10s, legs hang, wings flap at CFG.wings.flapHz',
+  build() {
+    const g = new Group()
+    g.add(charMesh(buildSoldierGeometry(), SOLDIER_RIG, ANIM.soldier,
+      { key: 'g-soldier', face: 1, armPose: true }, 0x101c28))
+    const gun = charMesh(gunGeos[0], SOLDIER_RIG, ANIM.soldier,
+      { key: 'g-gun', face: 1, spin: true, extra: GUN_SPIN_EXTRA }, 0x0c1016)
+    gun.name = 'gun'
+    g.add(gun)
+    g.add(charMesh(buildWingGeometry(), SOLDIER_RIG, ANIM.wings,
+      { key: 'g-wings', face: 1, extra: WING_FLAP_EXTRA }, 0x18202c, UW))
+    g.position.y = CFG.wings.height
+    const wrap = new Group()
+    wrap.add(g)
+    return wrap
   },
 })
 
@@ -210,6 +247,20 @@ entries.push({
   group: 'Items', name: 'Reward: minigun',
   build: () => liftedToken(buildMinigun()),
 })
+entries.push({
+  group: 'Items', name: 'Reward: energy can',
+  note: 'the WINGS bubble token · label baked by bakeCanLabel()',
+  build() {
+    // The in-game content shader, not lambert: the label lives in a texture
+    // that only that material samples.
+    const mesh = new Mesh(buildEnergyCan(), createLabelledContentMaterial(bakeCanLabel()))
+    mesh.castShadow = true
+    mesh.position.y = 0.6
+    const wrap = new Group()
+    wrap.add(mesh)
+    return wrap
+  },
+})
 
 /** Bubble contents float at bubble height in game; lift them off the grid here. */
 function liftedToken(geo) {
@@ -219,6 +270,123 @@ function liftedToken(geo) {
   wrap.add(mesh)
   return wrap
 }
+
+// ------------------------------------------------------------ live props
+// Bubbles and gates are not a geometry: the shell, ring, badge, HP digits and
+// panel are all per-frame shader state driven off a sim prop. So these entries
+// run the SHIPPED view modules (createProps / createGates) against a one-prop
+// stub world, and tick() feeds them each frame. `hit()` is what the flash
+// button calls: a bubble takes damage (ring drains, digits pop, shell boosts),
+// a plate walks its number up the way it does under fire.
+//
+// The bubble's HP digits are tinted by time-to-kill against the squad's DPS
+// over the remaining approach; with the prop parked at z=0 the "remaining"
+// time is ~0, so the stub DPS is large to keep the readout in its calm state.
+
+let atlas = null
+const glyphAtlas = () => (atlas || (atlas = createGlyphAtlas()))
+
+let nextPropId = 1
+function stubProp(kind, x, z) {
+  return {
+    id: nextPropId++, gen: 0, dead: false, kind, role: kind, x, z,
+    halfW: 0, maxHp: 0, hp: 0, displayHp: 0, value: 0, charge: 0, flash: 0,
+    reward: null, pending: 0, touched: false, resolved: false,
+  }
+}
+
+function stubWorld(items) {
+  return {
+    props: { size: items.length, items },
+    scroll: 0, nominalDPS: 1e4, count: 12, runTime: 40, tier: 0,
+  }
+}
+
+function liveEntry(name, kind, note, makeProps, more) {
+  return {
+    group: kind === 'gate' ? 'Gates' : 'Bubbles', name, note, live: true, ...more,
+    build() {
+      const wrap = new Group()
+      const items = makeProps()
+      const w = stubWorld(items)
+      const view = kind === 'gate' ? createGates(wrap, glyphAtlas()) : createProps(wrap, glyphAtlas())
+      this.w = w
+      this.items = items
+      this.view = view
+      // Prime once so frame() sees real bounds instead of an empty hidden root.
+      view.sync(w, 0, camera)
+      return wrap
+    },
+    tick(dt, cam) {
+      const w = this.w
+      w.runTime += dt
+      for (const p of this.items) {
+        if (p.maxHp > 0) {
+          p.displayHp += (p.hp - p.displayHp) * Math.min(1, dt * CFG.combat.displayHpLerpHz / 8)
+        }
+        if (p.flash > 0) p.flash = Math.max(0, p.flash - CFG.fx.hitFlashDecay * dt)
+      }
+      this.view.sync(w, dt, cam)
+    },
+    hit() {
+      for (const p of this.items) {
+        p.flash = 1
+        if (p.kind === 'bubble') {
+          p.hp = Math.max(0, p.hp - Math.ceil(p.maxHp * 0.15))
+          if (p.hp === 0) p.hp = p.maxHp   // loop so the button never goes dead
+        } else if (p.kind === 'gate') {
+          p.value += 1
+        }
+      }
+    },
+  }
+}
+
+function bubbleProp(reward, hp = 120) {
+  const p = stubProp('bubble', 0, 0)
+  p.halfW = CFG.bubble.radius
+  p.maxHp = p.hp = p.displayHp = hp
+  p.reward = reward
+  return p
+}
+
+function gateProp(x, halfW, value) {
+  // z = -0.5: the view fades a row in from its spawn depth and out again as it
+  // passes under the camera, and this is where both ramps are fully open.
+  const p = stubProp('gate', x, -0.5)
+  p.role = value >= 0 ? 'boon' : 'bane'
+  p.halfW = halfW
+  p.value = value
+  return p
+}
+
+const BUBBLE_NOTE = 'flash = take a hit'
+entries.push(liveEntry('Bubble: +N soldiers', 'bubble', BUBBLE_NOTE,
+  () => [bubbleProp(null)], { noTurn: true }))
+entries.push(liveEntry('Bubble: x2 soldiers', 'bubble', BUBBLE_NOTE,
+  () => [bubbleProp({ type: 'soldiers', mult: 2 })], { noTurn: true }))
+entries.push(liveEntry('Bubble: weapon', 'bubble', BUBBLE_NOTE + ' · badge names the NEXT tier',
+  () => [bubbleProp({ type: 'weapon' })], { noTurn: true }))
+entries.push(liveEntry('Bubble: drone', 'bubble', BUBBLE_NOTE,
+  () => [bubbleProp({ type: 'drone' })], { noTurn: true }))
+entries.push(liveEntry('Bubble: wings', 'bubble', BUBBLE_NOTE + ' · energy can, badge FLY',
+  () => [bubbleProp({ type: 'wings' })], { noTurn: true }))
+
+const GATE_NOTE = 'flash = shoot the plate (+1)'
+const halfCorridor = CFG.world.corridorWidth * 0.5 * (1 - CFG.gate.rowInset)
+entries.push(liveEntry('Plate: gain', 'gate', GATE_NOTE,
+  () => [gateProp(0, 2.2, 5)]))
+entries.push(liveEntry('Plate: loss', 'gate', GATE_NOTE,
+  () => [gateProp(0, 2.2, -4)]))
+entries.push(liveEntry('Plate row (3 segments)', 'gate', GATE_NOTE + ' · one row, shared posts',
+  () => {
+    const seg = halfCorridor * 2 / 3
+    return [
+      gateProp(-seg, seg * 0.5, 4),
+      gateProp(0, seg * 0.5, -3),
+      gateProp(seg, seg * 0.5, 12),
+    ]
+  }))
 
 // --------------------------------------------------------------------- stage
 
@@ -285,8 +453,26 @@ let phase = 0
 let spin = 0
 let spinRate = 0
 
+/**
+ * Bounds of what is actually DRAWN. Box3.setFromObject counts hidden children,
+ * and the live prop entries carry a whole pool of invisible barrels, so the
+ * naive box would frame a bubble as if it were a nine-unit wall.
+ */
+const _box = new Box3()
+function visibleBox(obj) {
+  const box = new Box3()
+  obj.updateWorldMatrix(true, true)
+  obj.traverseVisible((o) => {
+    if (!o.isMesh || !o.geometry) return
+    if (o.isInstancedMesh && o.count === 0) return
+    if (!o.geometry.boundingBox) o.geometry.computeBoundingBox()
+    box.union(_box.copy(o.geometry.boundingBox).applyMatrix4(o.matrixWorld))
+  })
+  return box
+}
+
 function frame(obj) {
-  const box = new Box3().setFromObject(obj)
+  const box = visibleBox(obj)
   if (box.isEmpty()) { camera.position.set(3, 2, 5); controls.target.set(0, 1, 0); return }
   const size = box.getSize(new Vector3())
   const center = box.getCenter(new Vector3())
@@ -340,7 +526,10 @@ el('play').addEventListener('click', () => {
   playing = !playing
   el('play').textContent = playing ? 'pause' : 'play'
 })
-el('flash').addEventListener('click', () => { U.aFlash.value = 1 })
+el('flash').addEventListener('click', () => {
+  U.aFlash.value = 1
+  if (active && active.hit) active.hit()
+})
 tierSel.addEventListener('change', () => {
   const t = Number(tierSel.value)
   const gun = active && active.obj && active.obj.getObjectByName('gun')
@@ -394,6 +583,7 @@ renderer.setAnimationLoop(() => {
   U.aGait.value = Number(gaitEl.value)
   U.aDrive.value = Number(driveEl.value)
   U.uTime.value += dt
+  UW.aPhase.value += dt * CFG.wings.flapHz * TAU
   if (U.aFlash.value > 0) U.aFlash.value = Math.max(0, U.aFlash.value - CFG.fx.hitFlashDecay * dt)
 
   if (active && active.boss) {
@@ -408,7 +598,12 @@ renderer.setAnimationLoop(() => {
   if (spin > TAU) spin -= TAU
   U.uSpin.value = spin
 
-  if (el('turn').checked) pivot.rotation.y += dt * 0.5
+  // Live props (bubbles, plates) run their shipped view module each frame.
+  if (active && active.tick) active.tick(playing ? dt : 0, camera)
+
+  // A bubble's badge is a camera billboard set in world space, so spinning its
+  // parent would twist the label off the lens; orbit with the mouse instead.
+  if (el('turn').checked && !(active && active.noTurn)) pivot.rotation.y += dt * 0.5
 
   controls.update()
   renderer.render(scene, camera)

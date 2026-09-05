@@ -133,7 +133,8 @@ export function moveSpits(w, dt) {
     s.y = 1.4 + Math.sin(Math.min(1, s.t * 1.6) * Math.PI) * 1.1
     if (s.z >= CFG.world.squadZ) {
       s.dead = true
-      const hit = Math.abs(s.x - w.anchorX) < CFG.zombie.spitRadius
+      // Acid lands on the ROAD; an airborne squad is not on it.
+      const hit = Math.abs(s.x - w.anchorX) < CFG.zombie.spitRadius && w.wings <= 0
       bus.emit(T.SPIT_LAND, s.x, 0, CFG.world.squadZ, hit ? 1 : 0)
       if (hit) queueRemove(w, CFG.zombie.spitKills, CAUSE.ZOMBIE)
     }

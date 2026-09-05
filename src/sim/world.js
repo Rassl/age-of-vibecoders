@@ -148,13 +148,17 @@ export function createWorld(seed = 1337) {
     pendingRemoves: 0,
     lossCause: 0,
     formationDirty: true,
+    // Wings pickup: seconds of flight left, and the smoothed 0..1 altitude the
+    // view and the muzzle heights read (sim/wings.js).
+    wings: 0,
+    altitude: 0,
 
     // --- run stats, for the end screen ---
     stats: {
       kills: 0, barrelsKilled: 0, barrelsBreached: 0, bubblesTaken: 0,
       bubblesMissed: 0, soldiersGained: 0, soldiersLost: 0, peakCount: 0,
       damageDealt: 0, tierUps: 0, gatesTaken: 0, gatesEaten: 0, dronesTaken: 0,
-      droneDamage: 0, droneBursts: 0, droneHits: 0,
+      droneDamage: 0, droneBursts: 0, droneHits: 0, wingsTaken: 0,
     },
 
     // --- pools ---
@@ -241,6 +245,8 @@ export function resetWorld(w, seed = w.seed) {
   w.pendingRemoves = 0
   w.lossCause = 0
   w.formationDirty = true
+  w.wings = 0
+  w.altitude = 0
 
   for (const k of Object.keys(w.stats)) w.stats[k] = 0
 

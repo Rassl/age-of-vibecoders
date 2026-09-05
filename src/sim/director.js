@@ -72,7 +72,9 @@ function spawnBeat(w, beat, horizon) {
     for (const lane of beat.lanes) {
       let gate = null
       if (lane.toll) gate = spawnBarrel(w, lane.toll.role, lane.x, horizon, lane.toll.hpScale)
-      const bubble = spawnBubble(w, lane.x, horizon - BUBBLE_TRAIL, lane.reward)
+      // `reward: null` authors a bare toll in a pair beat: a barrel with no
+      // bubble behind it, so a beat can mix one prize with a plain obstacle.
+      const bubble = lane.reward ? spawnBubble(w, lane.x, horizon - BUBBLE_TRAIL, lane.reward) : null
       if (gate && bubble) { gate.gate = bubble; bubble.gatedBy = gate }
     }
   } else if (beat.kind === 'gates') {

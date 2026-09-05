@@ -44,6 +44,8 @@ export const T = {
   DRONE_EXPIRE: 30,
   DRONE_FIRE: 31,
   BOLT_BURST: 32,
+  WINGS_ON: 33,
+  WINGS_OFF: 34,
 }
 
 export const TOPIC_NAME = Object.fromEntries(Object.entries(T).map(([k, v]) => [v, k]))

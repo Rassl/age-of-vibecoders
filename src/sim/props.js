@@ -12,6 +12,7 @@ import { bus, T } from '../core/bus.js'
 import { queueRemove, upgradeWeapon, CAUSE } from './roster.js'
 import { spawnJoiners } from './squad.js'
 import { spawnDrone } from './drones.js'
+import { grantWings } from './wings.js'
 import { roleId } from './combat.js'
 import { damp } from '../util/math.js'
 
@@ -47,7 +48,8 @@ export function spawnBubble(w, x, z, reward, hpScale = 1) {
   p.role = 'bubble'
   p.x = x
   p.z = z
-  p.halfW = CFG.bubble.radius
+  // The wings bubble is drawn bigger, so it is hit bigger too.
+  p.halfW = CFG.bubble.radius * (reward && reward.type === 'wings' ? CFG.wings.bubbleScale : 1)
   p.maxHp = bubbleHP(w.runTime, w.nominalDPS, hpScale)
   p.hp = p.maxHp
   p.displayHp = p.maxHp
@@ -246,6 +248,10 @@ export function resolveBreaks(w) {
       const n = r.count || 1
       for (let k = 0; k < n; k++) spawnDrone(w)
       w.stats.dronesTaken++
+      continue
+    }
+    if (r.type === 'wings') {
+      grantWings(w)
       continue
     }
     if (r.type === 'weapon' && upgradeWeapon(w)) continue

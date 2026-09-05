@@ -64,11 +64,13 @@ window closes from 5.14s to 4.00s. Every price in the game is quoted as a fracti
 units behind it. Barrels block bullets, so the toll literally gates the reward — break the
 barrel, then the bubble, inside one window. The math says you can afford one lane.
 
-- **10 pair beats, 20 bubbles**: 12 pay soldiers (2–8 bodies who sprint in and join, two of
+- **13 pair beats, 23 bubbles**: 12 pay soldiers (2–8 bodies who sprint in and join, two of
   them double), 5 pay a permanent weapon tier-up for the whole squad, 3 pay an escort
-  drone. Missing one costs you nothing, ever — `bubble.missPenalty` is 0 and is meant to
-  stay 0. Punishing a miss teaches players to avoid the most interesting decision in the
-  game.
+  drone, and 3 (the energy can at 32s, 54s and 76s, standing in the open with no toll, badge `FLY`) give the squad **wings**: ten
+  seconds airborne, out of reach of every body, acid glob and shockwave on the road,
+  still shooting — but still paying barrels and gate rows (`CFG.wings`). Missing one
+  costs you nothing, ever — `bubble.missPenalty` is 0 and is meant to stay 0. Punishing
+  a miss teaches players to avoid the most interesting decision in the game.
 - **Five weapons**, and you start on the worst: pistol → SMG → rifle → shotgun → minigun,
   1.0× → 4.3× damage. Each has its own mesh on every soldier, its own fire rate, spread,
   pellet count, pierce and tracer character; the minigun's barrels visibly spin up. A run

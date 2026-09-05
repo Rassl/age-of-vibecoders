@@ -45,7 +45,7 @@ import { clamp } from '../util/math.js'
 import { ENEMIES } from '../data/enemies.js'
 import { WEAPONS } from '../data/weapons.js'
 import {
-  BOSS_RIG, ENEMY_RIGS, GUN_POSES, SOLDIER_RIG,
+  BOSS_RIG, ENEMY_RIGS, GUN_POSES, SOLDIER_RIG, WING_PIVOT, buildWingGeometry,
   buildBloaterGeometry, buildBossGeometry, buildBruteGeometry, buildGunGeometries,
   buildRunnerGeometry, buildSoldierGeometry, buildSpitterGeometry, buildWalkerGeometry,
 } from './geometry.js'
@@ -170,6 +170,18 @@ export const ANIM = {
   },
 }
 
+/**
+ * The wings ride the soldier's rig but NOT its gait: aPhase is the flap and
+ * aGait the spread on this material, so every walk-cycle term is zeroed or the
+ * wings would bob with the flap while the body beneath them hangs still. The
+ * recoil terms stay -- the wings must pitch with the torso they are bolted to.
+ */
+ANIM.wings = {
+  ...ANIM.soldier,
+  legAmpL: 0, legAmpR: 0, knee: 0, armSwing: 0, headBob: 0,
+  torsoPitch: 0, bob: 0, drop: 0, sway: 0, roll: 0,
+}
+
 const CORPSE_CAP = 40
 const CORPSE_LIFE = 1.25
 const BURST_LIFE = 0.30
@@ -199,6 +211,23 @@ export const GUN_SPIN_EXTRA = `    vec3 ax = vec3(${f(SOLDIER_RIG.gunX)}, ${f(SO
     p = ax + kk * (sp * (p - ax));
     p.z += FW * ${f(ANIM.soldier.gunKick)} * d;
     rot = kk * sp;
+    glow = 0.0;`
+
+/**
+ * The wing's `extra` pose block. Each wing hinges at WING_PIVOT on its own
+ * side of x and flaps about the forward axis; the downstroke is faster than
+ * the upstroke so it reads as a BEAT rather than a metronome. `g` (aGait) is
+ * the spread: at 0 the wings are folded to a stub, at 1 fully out, so the
+ * rise and the fall grow and shrink them instead of popping.
+ */
+export const WING_FLAP_EXTRA = `    float side = position.x < 0.0 ? -1.0 : 1.0;
+    vec3 pv = vec3(side * ${f(WING_PIVOT.x)}, ${f(WING_PIVOT.y)}, ${f(WING_PIVOT.z)});
+    float s = sin(ph);
+    float beat = s > 0.0 ? s : s * 0.55;
+    float flap = 0.12 + 0.48 * beat;
+    mat3 m = rotZ(side * flap);
+    p = pv + m * ((p - pv) * (0.05 + 0.95 * g));
+    rot = m;
     glow = 0.0;`
 
 /** Per-kind charShader options (rim, and the bloater/spitter swell + glow). */
@@ -503,6 +532,7 @@ export function createCharacters(scene) {
     buildSpitterGeometry(), buildBloaterGeometry(),
   ]
   const bossGeo = buildBossGeometry()
+  const wingGeo = buildWingGeometry()
 
   // One vec2 shared by the squad and the joiners: x rolls the support arm, y
   // pitches the firing arm. The whole squad shares a tier, so this is the
@@ -529,6 +559,14 @@ export function createCharacters(scene) {
     new MeshLambertMaterial({ vertexColors: true, flatShading: true, emissive: 0x0c1016 }),
     SOLDIER_RIG, ANIM.soldier,
     { key: 'gun', instanced: true, face: 1, spin: true, uniforms: spinU, extra: GUN_SPIN_EXTRA },
+  )
+
+  // Wings (the energy-can pickup): drawn with the soldier's own instance
+  // matrix, like the gun, so they can never drift off the back they sit on.
+  const wingMat = charShader(
+    new MeshLambertMaterial({ vertexColors: true, flatShading: true, emissive: 0x18202c }),
+    SOLDIER_RIG, ANIM.wings,
+    { key: 'wings', instanced: true, face: 1, extra: WING_FLAP_EXTRA },
   )
 
   const enemyMats = []
@@ -563,6 +601,7 @@ export function createCharacters(scene) {
   // whole way in instead of materialising a rifle on arrival.
   const guns = makeCrowd(gunGeos[0], gunMat, CFG.pool.soldiers + CFG.pool.joiners)
   for (let i = 1; i < gunGeos.length; i++) attachAttrs(gunGeos[i], guns)
+  const wings = makeCrowd(wingGeo, wingMat, CFG.pool.soldiers)
 
   // Sized for the WHOLE pool per kind. A wave that happens to be all bloaters
   // must not silently stop drawing bloaters.
@@ -590,12 +629,16 @@ export function createCharacters(scene) {
   })
   boss.add(bossHead.group)
 
-  scene.add(soldiers.mesh, joiners.mesh, guns.mesh, bars.mesh, boss)
+  scene.add(soldiers.mesh, joiners.mesh, guns.mesh, wings.mesh, bars.mesh, boss)
   for (let k = 0; k < crowds.length; k++) scene.add(crowds[k].mesh)
 
   // ---- view-owned run state. Never read by the sim. ----
   const barQuat = new Quaternion()
   let clock = 0
+  // Wings: the flap phase, and this frame's lift in world units (read by the
+  // joiner pass so a reinforcement lands IN the airborne formation).
+  let flapClock = 0
+  let liftY = 0
   let dissolve = 0
   // HOLDOUT (w.mode === 1, mirrored from sim/world.js MODE like STATE_LOST):
   // the squad is planted, so the march gait only comes up while it strafes --
@@ -715,6 +758,12 @@ export function createCharacters(scene) {
     const sxz = 1 + (1.4 - 1) * dissolve
     let peak = 0
 
+    // Wings: the sim owns the smoothed altitude (sim/wings.js), so the bodies,
+    // the tracers and the muzzle flashes all lift on the same curve.
+    const lift = clamp(w.altitude, 0, 1)
+    liftY = lift * CFG.wings.height
+    const flying = lift > 0.01
+
     for (let i = 0; i < n; i++) {
       const s = items[i]
 
@@ -734,7 +783,12 @@ export function createCharacters(scene) {
       const drive = clamp(s.recoil * RECOIL_GAIN, -0.8, 1.3)
       if (drive > peak) peak = drive
 
-      _pos.set(s.vx, 0, s.vz)
+      // Each body flaps on its own offset so the crowd shimmers rather than
+      // beating as one; the hover rides the downstroke.
+      const flapPhase = flapClock + s.phase * TAU * 2.0
+      const hover = flying ? Math.sin(flapPhase - 0.6) * 0.05 * lift : 0
+
+      _pos.set(s.vx, liftY + hover, s.vz)
       _euler.set(0, 0, s.lean)
       _quat.setFromEuler(_euler)
       _scl.set(s.scale * sxz, s.scale * sy, s.scale * sxz)
@@ -744,15 +798,22 @@ export function createCharacters(scene) {
       const phase = gait + s.phase * TAU
       const v = 0.90 + (s.scale - 0.96) * 2
       const fl = s.iframe > 0 ? 0.55 * (s.iframe / iframe) : 0
-      const g = (1 - dissolve) * holdGait
+      // Airborne legs hang still: the walk cycle fades out with the lift.
+      const g = (1 - dissolve) * holdGait * (1 - lift)
       put(soldiers, i, phase, fl, drive, g, v, v, v)
 
       // The weapon IS the same body: same matrix, same index space, same phase,
       // same drive -- which is why it can never slide out of the hand.
       guns.mesh.setMatrixAt(i, _mtx)
       put(guns, i, phase, fl, drive, g, 1, 1, 1)
+
+      if (flying) {
+        wings.mesh.setMatrixAt(i, _mtx)
+        put(wings, i, flapPhase, fl, drive, lift, 1, 1, 1)
+      }
     }
     commit(soldiers, n)
+    commit(wings, flying ? n : 0)
 
     // Smoothed so the barrels do not stutter between shots at low fire rates.
     firePower += (peak - firePower) * (1 - Math.exp(-dt / 0.10))
@@ -782,7 +843,9 @@ export function createCharacters(scene) {
       const dz = tz - j.z
       const d = Math.sqrt(dx * dx + dz * dz)
       const land = 1 - clamp(d / 1.6, 0, 1)
-      const y = j.y * (1 - land * land)
+      // Lands at the formation's altitude, which is the road unless the squad
+      // is airborne on wings.
+      const y = j.y * (1 - land * land) + liftY * land
       const air = clamp(j.y / 0.9, 0, 1) * (1 - land)
       const sqY = pop * (1 + 0.28 * air - 0.30 * land)
       const sqXZ = pop * (1 - 0.12 * air + 0.20 * land)
@@ -1008,6 +1071,8 @@ export function createCharacters(scene) {
     sync(w, dt, camera) {
       const step = dt > MAX_SPRING_STEP ? MAX_SPRING_STEP : dt
       clock += dt
+      flapClock += dt * CFG.wings.flapHz * TAU
+      if (flapClock > TAU * 64) flapClock -= TAU * 64
       // Dying soldiers DISSOLVE -- squash to 0.2 tall while spreading to 1.4 --
       // instead of ragdolling. A ragdoll needs per-body state that survives a
       // swap-remove, and the pool guarantees it will not.
@@ -1040,9 +1105,13 @@ export function createCharacters(scene) {
       // Without this the first frame of the new run reads every zombie of the
       // OLD run as having just died, and the restart opens on forty corpses.
       if (liveCur) { liveCur.fill(0); livePrev.fill(0) }
+      flapClock = 0
+      liftY = 0
       soldiers.mesh.count = 0
       joiners.mesh.count = 0
       guns.mesh.count = 0
+      wings.mesh.count = 0
+      wings.mesh.visible = false
       bars.mesh.count = 0
       bars.mesh.visible = false
       for (let k = 0; k < crowds.length; k++) {
@@ -1053,10 +1122,13 @@ export function createCharacters(scene) {
     },
 
     dispose() {
-      scene.remove(soldiers.mesh, joiners.mesh, guns.mesh, bars.mesh, boss)
+      scene.remove(soldiers.mesh, joiners.mesh, guns.mesh, wings.mesh, bars.mesh, boss)
       soldiers.mesh.dispose()
       joiners.mesh.dispose()
       guns.mesh.dispose()
+      wings.mesh.dispose()
+      wingGeo.dispose()
+      wingMat.dispose()
       bars.mesh.dispose()
       bars.geo.dispose()
       bars.mat.dispose()

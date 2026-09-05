@@ -244,7 +244,8 @@ export function createLabels(scene, atlas) {
       const gg = T_SQUAD[1] + (ft[1] - T_SQUAD[1]) * flash
       const b = T_SQUAD[2] + (ft[2] - T_SQUAD[2]) * flash
 
-      const y = SQUAD_Y
+      // Rides the wings lift so the count stays over the helmets, not in them.
+      const y = SQUAD_Y + w.altitude * CFG.wings.height
       const z = sz + SQUAD_Z_LIFT
       const k = apparentK(sx, y, z, SQUAD_SIZE, SQUAD_MIN_PX, SQUAD_MAX_K)
       emit(w.count, sx, y, z, SQUAD_SIZE * k * (1 + PUNCH_AMP * punch), r, gg, b, 1)

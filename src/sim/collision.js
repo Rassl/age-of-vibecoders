@@ -28,6 +28,11 @@ export function collide(w, dt) {
     if (s.iframe > 0) s.iframe -= dt
   }
 
+  // Airborne (wings pickup): the crowd walks under the squad and past it. The
+  // zombies are NOT killed -- flying over a body is not the same as shooting
+  // it, and they despawn behind the squad like any body that was dodged.
+  if (w.wings > 0) return
+
   for (let zi = 0; zi < zs.size; zi++) {
     const z = zs.items[zi]
     if (z.dead) continue
@@ -72,10 +77,11 @@ export function collideShockwaves(w, dt) {
     const sw = pool.items[i]
     if (sw.dead || sw.hit) continue
     if (Math.abs(sw.z - squadZ) > rz + 0.5) continue
-    // The gap is the only safe lane; being inside it is a clean dodge.
+    // The gap is the only safe lane; being inside it is a clean dodge. An
+    // airborne squad is over the wave entirely.
     const inGap = Math.abs(w.anchorX - sw.gapX) + rx < sw.gapW * 0.5
     sw.hit = true
-    if (inGap) continue
+    if (inGap || w.wings > 0) continue
     queueRemove(w, CFG.boss.shockKills, CAUSE.SHOCKWAVE)
     bus.emit(T.HIT, w.anchorX, 0.6, squadZ, 0, 0, 0, 0)
   }

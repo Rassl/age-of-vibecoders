@@ -147,6 +147,20 @@ export function wireReactions({ loop, camera, particles, tracers, rings, hud, au
     blasts.droneBeacon(e.x, e.y, e.z, 0)
   })
 
+  // ---- wings ----------------------------------------------------------------
+
+  bus.on(T.WINGS_ON, (e) => {
+    // A positive punch (wider), the opposite of the weapon-up pull-in: the
+    // world drops away as the squad lifts.
+    camera.punchFov(4)
+    blasts.wingsUp(e.x, e.y, e.z)
+    audio.pickup(e.x)
+  })
+
+  bus.on(T.WINGS_OFF, (e) => {
+    blasts.droneBeacon(e.x, 0.3, e.z, 0)
+  })
+
   bus.on(T.BOLT_BURST, (e) => {
     blasts.boltBurst(e.x, e.y, e.z, e.a)
     if (e.a > 0) audio.impact(e.x)

@@ -27,6 +27,9 @@ export function fire(w, dt) {
   const period = 1 / wep.rate
   const visible = CFG.weapons.visibleShooters
   const items = w.soldiers.items
+  // Airborne squad (wings pickup): flashes and tracers leave the gun where the
+  // view actually draws it, not from an empty patch of road below the squad.
+  const lift = w.altitude * CFG.wings.height
 
   for (let i = 0; i < w.soldiers.size; i++) {
     const s = items[i]
@@ -52,8 +55,8 @@ export function fire(w, dt) {
     }
 
     if (s.slot < visible) {
-      bus.emit(T.MUZZLE, muzzleX, 1.24 * s.scale, muzzleZ, s.slot)
-      bus.emit(T.TRACER, muzzleX, 1.24 * s.scale, muzzleZ, w.lastHitZ, s.slot, 0, w.tier)
+      bus.emit(T.MUZZLE, muzzleX, 1.24 * s.scale + lift, muzzleZ, s.slot)
+      bus.emit(T.TRACER, muzzleX, 1.24 * s.scale + lift, muzzleZ, w.lastHitZ, s.slot, 0, w.tier)
     }
   }
 }

@@ -31,7 +31,14 @@ export const BEATS = [
     { x:  0, toll: { role: 'cheap', hpScale: 0.55 }, reward: { type: 'soldiers' } },
     { x:  3, toll: { role: 'toll',  hpScale: 1.00 }, reward: { type: 'drone' } },
   ] },
-  { t: 32, kind: 'cheap', lanes: [{ x: -3, hpScale: 0.7 }, { x: 3, hpScale: 0.7 }] },
+  // First can of three (32s / 54s / 76s, one per act). The can stands in the
+  // OPEN -- `toll: null` -- because a bubble behind drums is hidden until the
+  // barrel dies, and the can is the one reward whose model is the read. The
+  // other lane keeps a bare barrel (`reward: null`) so the beat still bites.
+  { t: 32, kind: 'pair', lanes: [
+    { x: -3, toll: null, reward: { type: 'wings' } },
+    { x:  3, toll: { role: 'cheap', hpScale: 0.70 }, reward: null },
+  ] },
   { t: 38, kind: 'pair', lanes: [
     { x: -3, toll: { role: 'cheap', hpScale: 0.60 }, reward: { type: 'soldiers' } },
     { x:  0, toll: { role: 'toll',  hpScale: 1.05 }, reward: { type: 'weapon' } },
@@ -43,7 +50,11 @@ export const BEATS = [
   ] },
 
   // --- Act 3: compounding. Walls arrive on top of crowds; the horde bites. ---
-  { t: 54, kind: 'cheap', lanes: [{ x: 0, hpScale: 0.8 }] },
+  // Second can: ten seconds of wings exactly where the crowd starts to
+  // out-walk the squad's fire, in the open in the centre lane.
+  { t: 54, kind: 'pair', lanes: [
+    { x:  0, toll: null, reward: { type: 'wings' } },
+  ] },
   { t: 60, kind: 'pair', lanes: [
     { x: -3, toll: { role: 'cheap', hpScale: 0.70 }, reward: { type: 'soldiers' } },
     { x:  3, toll: { role: 'toll',  hpScale: 1.15 }, reward: { type: 'weapon' } },
@@ -53,7 +64,11 @@ export const BEATS = [
     { x: -3, toll: { role: 'toll',  hpScale: 1.15 }, reward: { type: 'drone' } },
     { x:  3, toll: { role: 'cheap', hpScale: 0.72 }, reward: { type: 'soldiers' } },
   ] },
-  { t: 76, kind: 'cheap', lanes: [{ x: -3, hpScale: 0.85 }, { x: 3, hpScale: 0.85 }] },
+  // Third can, right lane in the open, ahead of the crescendo.
+  { t: 76, kind: 'pair', lanes: [
+    { x: -3, toll: { role: 'cheap', hpScale: 0.85 }, reward: null },
+    { x:  3, toll: null, reward: { type: 'wings' } },
+  ] },
   { t: 82, kind: 'pair', lanes: [
     { x:  0, toll: { role: 'cheap', hpScale: 0.75 }, reward: { type: 'soldiers' } },
     { x:  3, toll: { role: 'toll',  hpScale: 1.20 }, reward: { type: 'weapon' } },

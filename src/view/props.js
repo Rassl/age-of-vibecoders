@@ -22,8 +22,8 @@ import {
   AdditiveBlending, BoxGeometry, BufferAttribute, BufferGeometry, CanvasTexture, Color,
   CylinderGeometry, DynamicDrawUsage, FrontSide, Group, IcosahedronGeometry,
   InstancedBufferAttribute, InstancedMesh, Matrix4, Mesh, MeshStandardMaterial,
-  Object3D, PlaneGeometry, Quaternion, RepeatWrapping, ShaderMaterial,
-  SphereGeometry, TorusGeometry, Vector3, Vector4,
+  Object3D, PlaneGeometry, Quaternion, RepeatWrapping, SRGBColorSpace, ShaderMaterial,
+  SphereGeometry, TextureLoader, TorusGeometry, Vector3, Vector4,
 } from 'three'
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
 import { CFG } from '../config.js'
@@ -55,6 +55,13 @@ const MAX_BADGE = 8         // 'SHOTGUN' is the longest word a bubble can print
 const K_BODIES = 0
 const K_WEAPON = 1
 const K_DRONE = 2
+const K_WINGS = 3
+
+// A WINGS bubble is drawn this much bigger than the others -- the can is the
+// one reward that reads as itself from the horizon, so it gets the room. The
+// sim widens the same bubble's hit width to match (sim/props.js spawnBubble).
+export const WINGS_BUBBLE_SCALE = CFG.wings.bubbleScale
+const SHELL_R = 0.85
 
 /**
  * Two-letter reward tokens. ALWAYS, at every distance.
@@ -73,7 +80,7 @@ const K_DRONE = 2
  * far field where the model is a blob, and never fights the frame up close.
  * Every letter is already baked in GLYPH_CHARS, so this costs no re-bake.
  */
-const SHORT_WORD = { PISTOL: 'PS', SMG: 'SM', RIFLE: 'RF', SHOTGUN: 'SG', MINIGUN: 'MG', DRONE: 'DR' }
+const SHORT_WORD = { PISTOL: 'PS', SMG: 'SM', RIFLE: 'RF', SHOTGUN: 'SG', MINIGUN: 'MG', DRONE: 'DR', WINGS: 'FLY' }
 const POP_TIME = 0.11
 const POP_SCALE = 0.22
 
@@ -317,18 +324,34 @@ void main() {
 }
 `
 
+// USE_LABEL: the piece carries a printed label (the energy can). aTex is 1 on
+// the labelled surface and 0 on rims and tabs, which keep their vertex colour.
 const CONTENT_VS = `
+#ifdef USE_LABEL
+attribute float aTex;
+varying vec2 vUv;
+varying float vTex;
+#endif
 varying vec3 vN;
 varying vec3 vC;
 void main() {
   vN = normalize(mat3(modelMatrix) * normal);
   vC = color;
+#ifdef USE_LABEL
+  vUv = uv;
+  vTex = aTex;
+#endif
   #include <begin_vertex>
   #include <project_vertex>
 }
 `
 
 const CONTENT_FS = `
+#ifdef USE_LABEL
+uniform sampler2D uMap;
+varying vec2 vUv;
+varying float vTex;
+#endif
 varying vec3 vN;
 varying vec3 vC;
 void main() {
@@ -336,7 +359,11 @@ void main() {
   // brighter than anything else in the scene; letting scene lighting decide its
   // value is how the silhouette turns into a black blob at the far end.
   float key = dot(normalize(vN), normalize(vec3(0.35, 0.85, 0.42))) * 0.5 + 0.5;
-  gl_FragColor = vec4(vC * (0.42 + 0.80 * key) + vec3(0.05, 0.09, 0.12), 1.0);
+  vec3 c = vC;
+#ifdef USE_LABEL
+  c = mix(c, texture2D(uMap, vUv).rgb, vTex);
+#endif
+  gl_FragColor = vec4(c * (0.42 + 0.80 * key) + vec3(0.05, 0.09, 0.12), 1.0);
   #include <colorspace_fragment>
 }
 `
@@ -451,7 +478,7 @@ function barrelPart(geo, m, shell) {
 }
 
 /** A bubble-contents piece, with its colour baked per vertex. */
-function contentPart(geo, m, hex) {
+function contentPart(geo, m, hex, tex = 0) {
   const g = geo.toNonIndexed()
   g.applyMatrix4(m)
   const n = g.attributes.position.count
@@ -463,6 +490,9 @@ function contentPart(geo, m, hex) {
     a[i * 3 + 2] = c.b
   }
   g.setAttribute('color', new BufferAttribute(a, 3))
+  const t = new Float32Array(n)
+  if (tex) t.fill(tex)
+  g.setAttribute('aTex', new BufferAttribute(t, 1))
   return g
 }
 
@@ -590,6 +620,162 @@ export function buildDroneToken() {
   return mergeParts(parts, 'uv')
 }
 
+/**
+ * The token inside a WINGS bubble: an energy-drink can.
+ *
+ * The body is a plain cylinder wearing a PRINTED label (bakeCanLabel): at the
+ * 30px the token is judged at, a can is its label -- the silver/blue checker
+ * and a red word -- and no amount of geometry fakes print. Rims and the tab
+ * stay vertex-coloured. Tilted so it reads as a can rather than a pillar; the
+ * bubble spins it anyway.
+ */
+export function buildEnergyCan() {
+  // HUGE on purpose: the can fills a WINGS bubble, which updateBubble scales by
+  // WINGS_BUBBLE_SCALE (shell radius 0.85 -> 1.19). The tilted can's
+  // half-diagonal is ~1.09, just inside that shell.
+  const S = 2.9
+  const H = 0.70 * S
+  const R = 0.135 * S
+  const body = new CylinderGeometry(R, R, H, 20, 1, true)
+  const rim = new CylinderGeometry(R * 0.86, R, 0.03 * S, 20, 1)
+  // The base is the same frustum upside down. Built with the radii swapped
+  // rather than rotated: an X flip applied after the Z tilt mirrors the tilt,
+  // so the base leaned the wrong way and opened a crescent into the body.
+  const base = new CylinderGeometry(R, R * 0.86, 0.03 * S, 20, 1)
+  const lid = new CylinderGeometry(R * 0.84, R * 0.84, 0.01 * S, 20, 1)
+  const tab = new TorusGeometry(0.028 * S, 0.008 * S, 4, 10)
+  const tilt = 0.32
+  const ax = Math.sin(tilt), ay = Math.cos(tilt)
+  const top = H * 0.5
+  const parts = [
+    contentPart(body, xform(0, 0, 0, 0, 0, tilt, 1), 0xFFFFFF, 1),
+    contentPart(rim, xform(-ax * (top + 0.015 * S), ay * (top + 0.015 * S), 0, 0, 0, tilt, 1), 0xAEB8C6),
+    contentPart(base, xform(ax * (top + 0.015 * S), -ay * (top + 0.015 * S), 0, 0, 0, tilt, 1), 0xAEB8C6),
+    contentPart(lid, xform(-ax * (top + 0.032 * S), ay * (top + 0.032 * S), 0, 0, 0, tilt, 1), 0xD6DEE8),
+    contentPart(tab, xform(-ax * (top + 0.045 * S), ay * (top + 0.045 * S), 0.02 * S, Math.PI * 0.5, 0, tilt, 1), 0xE8EEF5),
+  ]
+  body.dispose(); rim.dispose(); base.dispose(); lid.dispose(); tab.dispose()
+  // Keep uv: the body samples the label through it.
+  return mergeParts(parts, null)
+}
+
+/**
+ * The can's label, baked once at boot like the glyph atlas. u wraps around the
+ * can, v runs bottom to top. A stylised energy-drink print: brushed silver
+ * with a blue diagonal checker, a sun disc, and the word in red -- the read is
+ * the colour pattern, so it is drawn big and simple enough to survive mip 3.
+ */
+export function bakeCanLabel() {
+  const W = 512
+  const HH = 256
+  const canvas = document.createElement('canvas')
+  canvas.width = W
+  canvas.height = HH
+  const ctx = canvas.getContext('2d')
+
+  // Brushed silver: a vertical gradient with faint vertical streaks.
+  const g = ctx.createLinearGradient(0, 0, 0, HH)
+  g.addColorStop(0, '#E2E8EF')
+  g.addColorStop(0.5, '#BCC6D2')
+  g.addColorStop(1, '#D3DBE4')
+  ctx.fillStyle = g
+  ctx.fillRect(0, 0, W, HH)
+  ctx.globalAlpha = 0.10
+  for (let x = 0; x < W; x += 3) {
+    ctx.fillStyle = (x / 3) % 2 ? '#FFFFFF' : '#8E9AA8'
+    ctx.fillRect(x, 0, 1, HH)
+  }
+  ctx.globalAlpha = 1
+
+  // The print: two blue blocks on opposite corners of each half turn, drawn
+  // as axis-aligned rects under a SHEAR so every seam is a diagonal, with a
+  // gap between them that becomes the wide silver band the logo sits on.
+  // Silver rings stay clear above and below, as on the real thing.
+  const top = 16
+  const bot = HH - 14
+  const mid = (top + bot) * 0.5
+  const gap = 26
+  const k = -0.8
+  ctx.save()
+  ctx.beginPath()
+  ctx.rect(0, top, W, bot - top)
+  ctx.clip()
+  ctx.transform(1, 0, k, 1, -k * mid, 0)     // x' = x + k * (y - mid)
+  ctx.fillStyle = '#1A43C4'
+  for (const dx of [-W, 0, W]) {
+    ctx.fillRect(dx + gap, top, W * 0.5 - gap * 2, mid - top)          // top-left block
+    ctx.fillRect(dx + W * 0.5 + gap, mid, W * 0.5 - gap * 2, bot - mid) // bottom-right block
+  }
+  ctx.restore()
+
+  // Logo on the band, front and back, so the word reads from any spin angle.
+  const drawBull = (cx, cy, dir) => {
+    ctx.save()
+    ctx.translate(cx, cy)
+    ctx.scale(dir, 1)
+    ctx.fillStyle = '#D8202A'
+    ctx.beginPath()
+    ctx.ellipse(0, 0, 15, 7, 0.15, 0, Math.PI * 2)     // body
+    ctx.fill()
+    ctx.beginPath()
+    ctx.ellipse(15, -4, 6, 5, -0.4, 0, Math.PI * 2)    // head, lowered to charge
+    ctx.fill()
+    ctx.lineWidth = 2.2
+    ctx.strokeStyle = '#D8202A'
+    ctx.beginPath()
+    ctx.moveTo(17, -8); ctx.quadraticCurveTo(22, -14, 26, -9)    // horn
+    ctx.moveTo(-10, 5); ctx.lineTo(-13, 12)                      // legs
+    ctx.moveTo(-3, 6); ctx.lineTo(-6, 13)
+    ctx.moveTo(6, 6); ctx.lineTo(9, 13)
+    ctx.moveTo(-15, -1); ctx.quadraticCurveTo(-22, -6, -20, 3)   // tail
+    ctx.stroke()
+    ctx.restore()
+  }
+  for (const cx of [W * 0.5, 0, W]) {
+    ctx.fillStyle = '#F6C93A'
+    ctx.beginPath()
+    ctx.arc(cx, mid + 8, 30, 0, Math.PI * 2)
+    ctx.fill()
+    drawBull(cx - 20, mid + 12, 1)
+    drawBull(cx + 20, mid + 12, -1)
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.lineJoin = 'round'
+    // The name in a bold serif italic, red on the silver band. A thin white
+    // edge keeps it legible once the mips blur it at range.
+    ctx.font = 'italic 700 40px Georgia, "Times New Roman", Times, serif'
+    ctx.lineWidth = 3
+    ctx.strokeStyle = '#FFFFFF'
+    ctx.strokeText('Red Bull', cx, mid - 24)
+    ctx.fillStyle = '#D8202A'
+    ctx.fillText('Red Bull', cx, mid - 24)
+    ctx.font = '700 13px ui-sans-serif, system-ui, sans-serif'
+    ctx.fillStyle = '#D8202A'
+    ctx.fillText('E N E R G Y   D R I N K', cx, mid + 46)
+  }
+
+  const tex = new CanvasTexture(canvas)
+  tex.colorSpace = SRGBColorSpace
+  tex.wrapS = RepeatWrapping
+  tex.anisotropy = 4
+  return tex
+}
+
+/**
+ * The material for labelled bubble contents. Own program (USE_LABEL), so the
+ * plain contents keep compiling the cheaper one. The caller owns disposal of
+ * both the material and the texture inside it.
+ */
+export function createLabelledContentMaterial(tex) {
+  return new ShaderMaterial({
+    defines: { USE_LABEL: '' },
+    uniforms: { uMap: { value: tex } },
+    vertexShader: CONTENT_VS,
+    fragmentShader: CONTENT_FS,
+    vertexColors: true,
+  })
+}
+
 export function buildSoldierTrio() {
   const body = new CylinderGeometry(0.085, 0.10, 0.26, 8, 1)
   const head = new SphereGeometry(0.075, 10, 8)
@@ -712,11 +898,12 @@ export function createProps(scene, atlas) {
   const wallGeo = keep(geos, buildWallClusterGeometry())
   const decalGeo = keep(geos, new PlaneGeometry(CFG.barrel.wallWidth, 6, 1, 1).rotateX(-Math.PI * 0.5))
   const quadGeo = keep(geos, new PlaneGeometry(1, 1))
-  const shellGeo = keep(geos, new IcosahedronGeometry(0.85, 2))
+  const shellGeo = keep(geos, new IcosahedronGeometry(SHELL_R, 2))
   const ringGeo = keep(geos, new TorusGeometry(0.93, 0.055, 6, 84))
   const trioGeo = keep(geos, buildSoldierTrio())
   const droneTokenGeo = keep(geos, buildDroneToken())
   const gunGeo = keep(geos, buildMinigun())
+  const canGeo = keep(geos, buildEnergyCan())
 
   const contentMat = keep(mats, new ShaderMaterial({
     uniforms: {},
@@ -724,6 +911,19 @@ export function createProps(scene, atlas) {
     fragmentShader: CONTENT_FS,
     vertexColors: true,
   }))
+  const canTex = keep(texs, bakeCanLabel())
+  const canMat = keep(mats, createLabelledContentMaterial(canTex))
+  // Real artwork, if the project ships one: loaded over the baked label, which
+  // stays up until (and if) the file arrives. See CFG.wings.labelUrl.
+  if (CFG.wings.labelUrl) {
+    new TextureLoader().load(CFG.wings.labelUrl, (t) => {
+      t.colorSpace = SRGBColorSpace
+      t.wrapS = RepeatWrapping
+      t.anisotropy = 4
+      keep(texs, t)
+      canMat.uniforms.uMap.value = t
+    }, undefined, () => console.warn('no can label at', CFG.wings.labelUrl))
+  }
 
   const barrels = new Array(N)
   const bubbles = new Array(N)
@@ -874,9 +1074,11 @@ export function createProps(scene, atlas) {
     const trio = new Mesh(trioGeo, contentMat)
     const gun = new Mesh(gunGeo, contentMat)
     const droneToken = new Mesh(droneTokenGeo, contentMat)
+    const can = new Mesh(canGeo, canMat)
     gun.visible = false
     droneToken.visible = false
-    contents.add(trio, gun, droneToken)
+    can.visible = false
+    contents.add(trio, gun, droneToken, can)
     group.add(contents)
 
     const bgeo = keep(geos, makeGlyphGeometry(quadGeo, MAX_BADGE))
@@ -901,7 +1103,7 @@ export function createProps(scene, atlas) {
 
     root.add(group)
     return {
-      group, shell, ring, contents, trio, gun, droneToken, badge, digits,
+      group, shell, ring, contents, trio, gun, droneToken, can, badge, digits,
       shellUni: shellMat.uniforms,
       ringUni: ringMat.uniforms,
       badgeAttr: bgeo.getAttribute('aUv'),
@@ -1110,6 +1312,7 @@ function apparentK(x, y, z, base, minPx, maxK) {
     // the same number would collide and the label would not repaint.
     const key = kind === K_WEAPON ? 1000 + w.tier
       : kind === K_DRONE ? 3000
+      : kind === K_WINGS ? 4000
       : 2000 + gain
     if (key === e.badgeKey) return
     e.badgeKey = key
@@ -1127,6 +1330,12 @@ function apparentK(x, y, z, base, minPx, maxK) {
       // max-tier fallback the way the weapon badge does: resolveBreaks always
       // pays a drone, so the label can never over-promise.
       const name = SHORT_WORD.DRONE
+      n = name.length
+      for (let i = 0; i < n; i++) writeGlyph(atlas, arr, i, name.charCodeAt(i))
+    } else if (kind === K_WINGS) {
+      // 'FLY' says what the can DOES; the can itself says what it is. W and Y
+      // were added to the atlas for exactly this label.
+      const name = SHORT_WORD.WINGS
       n = name.length
       for (let i = 0; i < n; i++) writeGlyph(atlas, arr, i, name.charCodeAt(i))
     } else {
@@ -1148,7 +1357,16 @@ function apparentK(x, y, z, base, minPx, maxK) {
   function updateBubble(k, p, w, dt, camera) {
     const e = bubbles[k]
     e.group.visible = true
-    e.group.position.set(p.x, CFG.bubble.y, p.z)
+
+    // The wings bubble is bigger; it grows UP from the same floor height so the
+    // shell never dips into the road, and its labels ride up with the shell.
+    const big = p.reward !== null && p.reward.type === 'wings' ? WINGS_BUBBLE_SCALE : 1
+    const lift = (big - 1) * SHELL_R
+    const badgeY = BADGE_Y + lift
+    e.shell.scale.setScalar(big)
+    e.ring.scale.setScalar(big)
+    e.badge.position.y = badgeY
+    e.group.position.set(p.x, CFG.bubble.y + lift, p.z)
 
     e.time += dt
     e.shellUni.uTime.value = e.time
@@ -1170,9 +1388,11 @@ function apparentK(x, y, z, base, minPx, maxK) {
     const kind = r === null ? K_BODIES
       : r.type === 'weapon' && w.tier < MAX_TIER ? K_WEAPON
       : r.type === 'drone' ? K_DRONE
+      : r.type === 'wings' ? K_WINGS
       : K_BODIES
     e.gun.visible = kind === K_WEAPON
     e.droneToken.visible = kind === K_DRONE
+    e.can.visible = kind === K_WINGS
     e.trio.visible = kind === K_BODIES
 
     e.spin += 0.7 * dt
@@ -1184,7 +1404,7 @@ function apparentK(x, y, z, base, minPx, maxK) {
     // Compose order is T*R*S, so the scale and the billboard quaternion do not
     // fight. layoutGlyphs already centres the badge at local (0,0), and
     // badge.position.y carries BADGE_Y, so the mesh origin IS the string anchor.
-    const badgeK = apparentK(p.x, CFG.bubble.y + BADGE_Y, p.z, BADGE_SIZE, BADGE_MIN_PX, BADGE_MAX_K)
+    const badgeK = apparentK(p.x, CFG.bubble.y + lift + badgeY, p.z, BADGE_SIZE, BADGE_MIN_PX, BADGE_MAX_K)
     e.badge.scale.setScalar(badgeK)
     updateBadge(e, p, w, kind)
 
@@ -1192,9 +1412,9 @@ function apparentK(x, y, z, base, minPx, maxK) {
     // answers "how many more hits", so it has to survive the spawn horizon.
     // Stacked over the badge by each label's SCALED half-height, so the pair
     // stays two clear lines whether both are at 1x up close or clamped at range.
-    const digitK = apparentK(p.x, CFG.bubble.y + BADGE_Y + 0.6, p.z, DIGIT_SIZE, DIGIT_MIN_PX, DIGIT_MAX_K)
+    const digitK = apparentK(p.x, CFG.bubble.y + lift + badgeY + 0.6, p.z, DIGIT_SIZE, DIGIT_MIN_PX, DIGIT_MAX_K)
     e.digits.scale.setScalar(digitK)
-    e.digits.position.y = BADGE_Y + BADGE_SIZE * 0.5 * badgeK + DIGIT_SIZE * 0.5 * digitK + BUBBLE_DIGIT_GAP
+    e.digits.position.y = badgeY + BADGE_SIZE * 0.5 * badgeK + DIGIT_SIZE * 0.5 * digitK + BUBBLE_DIGIT_GAP
     updateDigits(e, p, w, dt)
   }
 

@@ -22,6 +22,7 @@ import { commit } from './roster.js'
 import { direct } from './director.js'
 import { STATE, MODE } from './world.js'
 import { snapshot } from './interpolate.js'
+import { updateWings } from './wings.js'
 
 /** Advance run time and settle THIS step's scroll speed, once, for everyone. */
 function timeSystem(w, dt) {
@@ -118,6 +119,9 @@ function steerSystem(w, dt, dx, axis) {
 
 export const SYSTEMS = [
   { name: 'time', fn: timeSystem },
+  // Right after time: the altitude this step is settled before anything that
+  // reads it (muzzle heights in fire, contact immunity in collision).
+  { name: 'wings', fn: updateWings },
   { name: 'steer', fn: steerSystem },
   { name: 'formation', fn: (w) => resolveSquadPositions(w) },
   { name: 'scroll', fn: scrollSystem },

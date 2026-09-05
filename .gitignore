@@ -5,3 +5,4 @@ dist/
 assets-src/
 certs/
 public/mkcert-rootCA.pem
+tools/og-plate.png

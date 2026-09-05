@@ -144,7 +144,10 @@ export const CFG = {
     perBubbleRate: 0.08,
     perBubbleMax: 12,
     missPenalty: 0,       // never punish a miss
-    joinerSpeed: 16,
+    // In the SQUAD frame (scrollSystem does not treadmill joiners), so this is
+    // the closing speed from any direction. Was 16 with scroll added on top
+    // from the front; 24 keeps a 20u run-in near a second.
+    joinerSpeed: 24,
     joinerStagger: 0.06,
     maxTier: 4,
   },
@@ -302,6 +305,10 @@ export const CFG = {
     followFactor: 0.50,   // partial -- 1:1 makes the drag read as dead
     followTau: 0.20,
     rollGain: 0.012,
+    // Wings: the camera climbs by this (and the look point by half the squad's
+    // lift) while the squad is airborne, so the flight reads from above --
+    // bodies over the crowd -- instead of as a squad standing slightly taller.
+    wingsRise: 3.2,
     dollyGain: 1.15,
     dollyMaxZ: 19.5,
     dollyOmega: 3.0,

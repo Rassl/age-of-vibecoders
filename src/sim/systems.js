@@ -61,8 +61,13 @@ function scrollSystem(w, dt) {
   }
   const zs = w.zombies
   for (let i = 0; i < zs.size; i++) zs.items[i].z += d
-  const js = w.joiners
-  for (let i = 0; i < js.size; i++) js.items[i].z += d
+  // Joiners are NOT scrolled. They home on the squad at joinerSpeed in the
+  // squad's own frame; with the treadmill applied on top, a joiner still
+  // waiting out its stagger was carried 14-18 u/s BEHIND the squad, and one
+  // that spawned level with it (a gate payout) drifted back while running
+  // sideways -- so every reward strung its bodies out in a line behind the
+  // crowd, closing at 16 - scroll ~ 0 u/s until the 1.6s failsafe merged
+  // them. Bodies now only ever arrive from ahead or beside.
   const ss = w.shockwaves
   for (let i = 0; i < ss.size; i++) ss.items[i].z += d
 }

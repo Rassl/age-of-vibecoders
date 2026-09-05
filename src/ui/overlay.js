@@ -80,6 +80,17 @@ const CSS = `
 .aov-alt.on{display:block;}
 .aov-hint{margin-top:12px;font-size:10px;letter-spacing:.3em;text-indent:.3em;
   color:rgba(194,168,120,.62);}
+/* The one control, shown rather than told: two arrows nudging outward around a
+   finger, on the start card only. */
+.aov-arrows{display:flex;justify-content:center;align-items:center;gap:18px;
+  margin-top:18px;font-size:30px;line-height:1;color:#CFF6FF;
+  text-shadow:0 2px 0 rgba(0,0,0,.5);}
+.aov-arrows .f{font-size:26px;animation:aov-swipe 1.6s ease-in-out infinite;}
+.aov-arrows .l{animation:aov-nudge-l 1.6s ease-in-out infinite;}
+.aov-arrows .r{animation:aov-nudge-r 1.6s ease-in-out infinite;}
+@keyframes aov-swipe{0%,100%{transform:translateX(-22px)}50%{transform:translateX(22px)}}
+@keyframes aov-nudge-l{0%,100%{transform:translateX(-6px);opacity:1}50%{transform:none;opacity:.45}}
+@keyframes aov-nudge-r{0%,100%{transform:none;opacity:.45}50%{transform:translateX(6px);opacity:1}}
 .aov-tap{margin-top:26px;font-size:13px;font-weight:700;letter-spacing:.34em;
   text-indent:.34em;color:#E0C9A0;animation:aov-pulse 1.5s ease-in-out infinite;}
 .aov-round{display:inline-block;margin-top:14px;padding:5px 14px 6px;
@@ -159,6 +170,10 @@ export function createOverlay(root, onStart, onRestart, onReplay) {
   const startRound = div('aov-round', startCard)
   const startLine = div('aov-line', startCard, INSTRUCTION[0])
   const startTip = div('aov-line aov-tip', startCard, TIP[0])
+  const arrows = div('aov-arrows', startCard)
+  div('l', arrows, '\u25C0')
+  div('f', arrows, '\u{1F446}')
+  div('r', arrows, '\u25B6')
   div('aov-tap', startCard, 'TAP TO DEPLOY')
 
   // --- end card, built once: showEnd() only rewrites text nodes, so a restart

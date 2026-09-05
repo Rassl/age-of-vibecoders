@@ -140,11 +140,13 @@ export function createCameraRig(camera) {
         // base pose cannot silently tilt the whole dolly range.
         const pitchSlope = (c.basePos[1] - c.lookY) / (c.basePos[2] - c.lookZ)
         camY = c.lookY + pitchSlope * (dollyZ - c.lookZ)
+        // Airborne on wings: climb, and aim at the lifted squad's midriff.
+        camY += w.altitude * c.wingsRise
 
         // The look target does NOT lag; only the position does. That difference is
         // what lets the squad slide off centre under a fast drag and settle back.
         lookX = w.anchorX * c.lookXFactor + velSmooth * c.lookVelFactor
-        lookY = lerp(c.lookY, BOSS_LOOK_Y, bossBlend)
+        lookY = lerp(c.lookY, BOSS_LOOK_Y, bossBlend) + w.altitude * CFG.wings.height * 0.5
         lookZ = c.lookZ
         baseFov = c.fov
         // Counter-roll on lateral velocity. One clamped float, and it is most of

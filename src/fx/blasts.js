@@ -31,9 +31,11 @@ const TONE_TOXIC = 1
 const TONE_CYAN = 2
 
 // Impact flashes are stamped on the tracers' flash mesh, so they cost no draw
-// call of their own. Warm white for metal, cold white for glass.
-const FLASH_METAL_R = 1.00, FLASH_METAL_G = 0.86, FLASH_METAL_B = 0.55
+// call of their own. The squad fires lasers, so a strike on metal or flesh
+// flashes laser-cyan; glass keeps its paler cold white.
+const FLASH_METAL_R = 0.62, FLASH_METAL_G = 0.92, FLASH_METAL_B = 1.00
 const FLASH_GLASS_R = 0.70, FLASH_GLASS_G = 0.95, FLASH_GLASS_B = 1.00
+const FLASH_FLESH_R = 0.45, FLASH_FLESH_G = 0.85, FLASH_FLESH_B = 1.00
 
 /**
  * @param {object} deps every field optional:
@@ -93,10 +95,17 @@ export function createBlasts(deps) {
 
     // Flesh: a dark puff that HANGS (low frequency, so the hit registers at
     // distance) plus a tight spray thrown back along the bullet's path toward
-    // the camera (high frequency, so it registers as directional).
+    // the camera (high frequency, so it registers as directional), and a
+    // small laser-cyan flash so the bolt visibly lands.
     if (particles) {
       particles.burst('flesh', x, y, z, 4)
       particles.burstDir('gore', x, y, z, 4, 0, 0, 4.0)
+    }
+    if (tracers) {
+      tracers.spawnFlash(
+        x, y, z + 0.1, 0.24, 0.24,
+        FLASH_FLESH_R, FLASH_FLESH_G, FLASH_FLESH_B, 0.05, 1.8,
+      )
     }
   }
 

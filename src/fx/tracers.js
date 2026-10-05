@@ -38,15 +38,18 @@ import {
   CanvasTexture,
   Color,
   CylinderGeometry,
+  DataTexture,
   DoubleSide,
   DynamicDrawUsage,
   InstancedBufferAttribute,
   InstancedMesh,
+  LinearFilter,
   Matrix4,
   MeshBasicMaterial,
   MeshLambertMaterial,
   PlaneGeometry,
   Quaternion,
+  RGBAFormat,
   SRGBColorSpace,
   Vector3,
 } from 'three'
@@ -77,6 +80,23 @@ const CORE_SPAN = 3.4          // base streak length, world units, before the ti
 const SPAN_FRAME_SAFETY = 1.15
 const GLOW_LEN_MULT = 1.08
 const MUZZLE_SIZE = 0.55
+// LASER look. The glow twin carries the tier's hue at full saturation; the
+// core is that hue pushed most of the way to white, so a bolt reads as a hot
+// white line inside a coloured sheath rather than as a coloured stick.
+const CORE_WHITE = 0.35
+// The CFG/WEAPONS widths were tuned for a 0.06u pale streak -- a few pixels at
+// this camera -- so the bolt core is drawn wider, the sheath kept tight to it
+// (crisp, not a haze), and both gains lifted because the bolt textures cover
+// only part of each quad.
+const CORE_WIDEN = 1.7
+const GLOW_WIDEN = 0.75
+const CORE_GAIN = 1.35
+const GLOW_GAIN = 2.8
+// Bolts fly straight AWAY from this camera, which foreshortens them, so they
+// are drawn a little longer; and lasers are fast, so every tier flies faster
+// than its bullet profile. Visual only: hits resolve in the sim, not here.
+const SPAN_LONGER = 1.15
+const LASER_SPEED = 1.4
 
 // Decimation guards FILL RATE, so the rate is counted in INSTANCES (a shotgun
 // blast is five) and the stride drops whole SHOTS -- dropping individual pellets
@@ -118,21 +138,21 @@ const LOOK = {
     pellets: 1, divergeX: 0, divergeY: 0, span: 0.70, speed: 0.55, width: 1.00,
     coreK: 0.99, glowK: 0.26, glowW: 3.2,
     flashSize: 0.62, flashAspect: 1.00, flashGain: 3.0, flashLife: 1.15,
-    smoke: 0.55, casing: 1.00, casingSize: 1.00,
+    smoke: 0, casing: 1.00, casingSize: 1.00,
     tracer: 0xffd479, muzzle: 0xffe9b0,
   },
   smg: {
     pellets: 1, divergeX: 0.005, divergeY: 0.002, span: 0.62, speed: 0.62, width: 0.86,
     coreK: 1.04, glowK: 0.24, glowW: 3.0,
     flashSize: 0.52, flashAspect: 1.05, flashGain: 2.8, flashLife: 0.95,
-    smoke: 0.16, casing: 0.30, casingSize: 0.82,
+    smoke: 0, casing: 0.30, casingSize: 0.82,
     tracer: 0xffdc8e, muzzle: 0xfff0c0,
   },
   rifle: {
     pellets: 1, divergeX: 0, divergeY: 0, span: 2.00, speed: 1.25, width: 1.00,
     coreK: 1.21, glowK: 0.26, glowW: 3.5,
     flashSize: 0.72, flashAspect: 1.30, flashGain: 3.2, flashLife: 1.20,
-    smoke: 0.35, casing: 0.60, casingSize: 1.00,
+    smoke: 0, casing: 0.60, casingSize: 1.00,
     tracer: 0xffe08a, muzzle: 0xfff0c0,
   },
   shotgun: {
@@ -144,7 +164,7 @@ const LOOK = {
     pellets: 4, divergeX: 0.055, divergeY: 0.016, span: 0.50, speed: 0.50, width: 0.90,
     coreK: 0.80, glowK: 0.20, glowW: 2.2,
     flashSize: 0.85, flashAspect: 1.75, flashGain: 3.0, flashLife: 1.55,
-    smoke: 0.85, casing: 1.00, casingSize: 1.35,
+    smoke: 0, casing: 1.00, casingSize: 1.35,
     tracer: 0xffc46b, muzzle: 0xffdca0,
   },
   minigun: {
@@ -183,6 +203,7 @@ const MAX_TIER_INDEX = N_TIER - 1
 const P = []
 const TRACER_RGB = new Float32Array(N_TIER * 3)
 const MUZZLE_RGB = new Float32Array(N_TIER * 3)
+const GLOW_RGB = new Float32Array(N_TIER * 3)
 for (let i = 0; i < N_TIER; i++) {
   const wep = i === TURRET_TIER ? TURRET : WEAPONS[i]
   const look = LOOK[wep.id] || LOOK_DEFAULT
@@ -193,6 +214,12 @@ for (let i = 0; i < N_TIER; i++) {
   TRACER_RGB[i * 3] = _color.r
   TRACER_RGB[i * 3 + 1] = _color.g
   TRACER_RGB[i * 3 + 2] = _color.b
+  GLOW_RGB[i * 3] = _color.r
+  GLOW_RGB[i * 3 + 1] = _color.g
+  GLOW_RGB[i * 3 + 2] = _color.b
+  TRACER_RGB[i * 3] = lerp(_color.r, 1, CORE_WHITE)
+  TRACER_RGB[i * 3 + 1] = lerp(_color.g, 1, CORE_WHITE)
+  TRACER_RGB[i * 3 + 2] = lerp(_color.b, 1, CORE_WHITE)
   _color.setHex(wep.muzzleColor !== undefined ? wep.muzzleColor : look.muzzle, SRGBColorSpace)
   MUZZLE_RGB[i * 3] = _color.r
   MUZZLE_RGB[i * 3 + 1] = _color.g
@@ -217,7 +244,7 @@ function makeTracer() {
   return {
     x: 0, y: 0, z: 0, endZ: 0, travel: 0, headZ: 0, tailZ: 0,
     w: 0, span: 0, speed: 1, dx: 0, dy: 0,
-    r: 1, g: 1, b: 1, coreK: 0.55, glowK: 0.75, glowW: 3,
+    r: 1, g: 1, b: 1, gr: 1, gg: 1, gb: 1, coreK: 0.55, glowK: 0.75, glowW: 3,
   }
 }
 
@@ -240,6 +267,9 @@ function makeCasing() {
  * triangles instead of 4 AND additively double-adds wherever its own faces
  * overlap, so the streak's brightness would depend on the viewing angle. A cross
  * with side:DoubleSide is always exactly two quads deep, everywhere, forever.
+ *
+ * UVs: u runs across each quad's width, v along the length with v = 1 at the
+ * HEAD (local -Z, the end that leads) -- see bakeStreakTexture.
  */
 function buildStreakGeometry() {
   const p = new Float32Array([
@@ -250,9 +280,55 @@ function buildStreakGeometry() {
     0, -0.5, -0.5, 0, 0.5, -0.5, 0, 0.5, 0.5,
     0, -0.5, -0.5, 0, 0.5, 0.5, 0, -0.5, 0.5,
   ])
+  const uv = new Float32Array(12 * 2)
+  for (let i = 0; i < 12; i++) {
+    const across = i < 6 ? p[i * 3] : p[i * 3 + 1]
+    uv[i * 2] = across + 0.5
+    uv[i * 2 + 1] = 0.5 - p[i * 3 + 2]
+  }
   const g = new BufferGeometry()
   g.setAttribute('position', new BufferAttribute(p, 3))
+  g.setAttribute('uv', new BufferAttribute(uv, 2))
   return g
+}
+
+const smooth = (a, b, x) => {
+  const t = clamp((x - a) / (b - a), 0, 1)
+  return t * t * (3 - 2 * t)
+}
+
+/**
+ * The bolt's shape, baked once: a laser bolt, not a slab and not a comet.
+ *
+ * A flat-filled quad reads as a hard-edged rectangle -- the shape of a lane
+ * dash. A laser bolt is a CAPSULE: even brightness along its length with short
+ * rounded ends. Across the width the core is nearly flat with a hard edge (a
+ * crisp line), and the sheath falls off quickly (a tight glow, not a haze).
+ */
+function bakeStreakTexture(core) {
+  const W = 32
+  const H = 128
+  const data = new Uint8Array(W * H * 4)
+  for (let y = 0; y < H; y++) {
+    const v = (y + 0.5) / H
+    // Rounded ends: 8% at each end for the core, a little more for the sheath.
+    const cap = core ? 0.08 : 0.12
+    const along = smooth(0, cap, v) * (1 - smooth(1 - cap, 1, v))
+    for (let x = 0; x < W; x++) {
+      const d = Math.abs((x + 0.5) / W - 0.5) * 2
+      const across = core ? 1 - smooth(0.55, 1.0, d) : Math.exp(-((d / 0.45) ** 2)) * (1 - d)
+      const k = Math.round(255 * along * across)
+      const o = (y * W + x) * 4
+      data[o] = data[o + 1] = data[o + 2] = k
+      data[o + 3] = 255
+    }
+  }
+  const tex = new DataTexture(data, W, H, RGBAFormat)
+  // An intensity mask multiplied into additive light: linear, no colour space.
+  tex.magFilter = LinearFilter
+  tex.minFilter = LinearFilter
+  tex.needsUpdate = true
+  return tex
 }
 
 /**
@@ -277,9 +353,9 @@ function bakeFlashTexture() {
 
   // Broad halo first: it is what keeps the petals from reading as a paper cutout.
   const halo = g.createRadialGradient(H, H, 0, H, H, H)
-  halo.addColorStop(0.00, 'rgba(255,244,210,0.60)')
-  halo.addColorStop(0.30, 'rgba(255,214,140,0.26)')
-  halo.addColorStop(1.00, 'rgba(255,180,80,0)')
+  halo.addColorStop(0.00, 'rgba(242,248,255,0.60)')
+  halo.addColorStop(0.30, 'rgba(222,236,255,0.26)')
+  halo.addColorStop(1.00, 'rgba(200,224,255,0)')
   g.fillStyle = halo
   g.fillRect(0, 0, S, S)
 
@@ -294,8 +370,8 @@ function bakeFlashTexture() {
     const halfW = rng.range(0.10, 0.26)
     const grad = g.createLinearGradient(0, 0, Math.cos(a) * len, Math.sin(a) * len)
     grad.addColorStop(0.0, 'rgba(255,255,255,0.95)')
-    grad.addColorStop(0.45, 'rgba(255,226,150,0.55)')
-    grad.addColorStop(1.0, 'rgba(255,170,60,0)')
+    grad.addColorStop(0.45, 'rgba(226,240,255,0.55)')
+    grad.addColorStop(1.0, 'rgba(190,220,255,0)')
     g.fillStyle = grad
     g.beginPath()
     g.moveTo(Math.cos(a - halfW) * H * 0.20, Math.sin(a - halfW) * H * 0.20)
@@ -311,8 +387,8 @@ function bakeFlashTexture() {
   // light source and never asks what the sand is doing.
   const core = g.createRadialGradient(H, H, 0, H, H, H * 0.30)
   core.addColorStop(0.00, 'rgba(255,255,255,1)')
-  core.addColorStop(0.55, 'rgba(255,250,225,0.85)')
-  core.addColorStop(1.00, 'rgba(255,230,170,0)')
+  core.addColorStop(0.55, 'rgba(246,250,255,0.85)')
+  core.addColorStop(1.00, 'rgba(222,236,255,0)')
   g.fillStyle = core
   g.fillRect(0, 0, S, S)
 
@@ -377,8 +453,10 @@ export function createTracers(scene, deps) {
   // scalar, which is what lets the shrink-out at end of life be a single lerp.
   const casingGeo = new CylinderGeometry(0.5, 0.42, 2.6, 6, 1)
 
-  const glowMat = makeAdditiveMaterial(null)
-  const coreMat = makeAdditiveMaterial(null)
+  const glowTex = bakeStreakTexture(false)
+  const coreTex = bakeStreakTexture(true)
+  const glowMat = makeAdditiveMaterial(glowTex)
+  const coreMat = makeAdditiveMaterial(coreTex)
   const flashMat = makeAdditiveMaterial(flashTex)
   // Lit, not additive: brass has to read as a solid object catching the key
   // light, otherwise it is just another spark and the whole point is lost.
@@ -474,7 +552,7 @@ export function createTracers(scene, deps) {
       // (retracting into the impact). Fading with that length turns both ends
       // into a taper instead of a pop, which at 0.3s of life is all the eye gets.
       const f = len < span ? len / span : 1
-      const wd = tr.w * widthBoost
+      const wd = tr.w * widthBoost * CORE_WIDEN
       // Divergence is applied at the streak's CENTRE, so a fanning shotgun
       // pellet stays a straight segment while the group opens up.
       const flown = tr.z - cz
@@ -485,20 +563,20 @@ export function createTracers(scene, deps) {
       _m4.setPosition(px, py, cz)
       coreMesh.setMatrixAt(i, _m4)
 
-      const gw = wd * tr.glowW
+      const gw = wd * tr.glowW * GLOW_WIDEN
       _m4.makeScale(gw, gw, len * GLOW_LEN_MULT)
       _m4.setPosition(px, py, cz)
       glowMesh.setMatrixAt(i, _m4)
 
       const ci = i * 3
-      const core = f * gainBoost * tr.coreK
+      const core = f * gainBoost * tr.coreK * CORE_GAIN
       cc[ci] = tr.r * core
       cc[ci + 1] = tr.g * core
       cc[ci + 2] = tr.b * core
-      const glow = f * gainBoost * tr.glowK
-      gc[ci] = tr.r * glow
-      gc[ci + 1] = tr.g * glow
-      gc[ci + 2] = tr.b * glow
+      const glow = f * gainBoost * tr.glowK * GLOW_GAIN
+      gc[ci] = tr.gr * glow
+      gc[ci + 1] = tr.gg * glow
+      gc[ci + 2] = tr.gb * glow
     }
 
     // ---- muzzle flashes
@@ -627,8 +705,8 @@ export function createTracers(scene, deps) {
       tr.travel = 0
       tr.headZ = z
       tr.tailZ = z
-      tr.speed = look.speed * (n > 1 ? rng.range(0.88, 1.12) : 1)
-      tr.span = CORE_SPAN * SPAN_MULT[t] * (n > 1 ? rng.range(0.75, 1.25) : 1)
+      tr.speed = look.speed * LASER_SPEED * (n > 1 ? rng.range(0.88, 1.12) : 1)
+      tr.span = CORE_SPAN * SPAN_MULT[t] * SPAN_LONGER * (n > 1 ? rng.range(0.75, 1.25) : 1)
       tr.w = baseW * (n > 1 ? rng.range(0.8, 1.25) : 1)
       tr.dx = rake + fan * look.divergeX + rng.range(-1, 1) * look.divergeX * 0.35
       tr.dy = fan * look.divergeY + rng.range(-1, 1) * look.divergeY * 0.6
@@ -638,6 +716,9 @@ export function createTracers(scene, deps) {
       tr.r = TRACER_RGB[t * 3]
       tr.g = TRACER_RGB[t * 3 + 1]
       tr.b = TRACER_RGB[t * 3 + 2]
+      tr.gr = GLOW_RGB[t * 3]
+      tr.gg = GLOW_RGB[t * 3 + 1]
+      tr.gb = GLOW_RGB[t * 3 + 2]
     }
   }
 
@@ -759,6 +840,8 @@ export function createTracers(scene, deps) {
     flashMat.dispose()
     casingMat.dispose()
     flashTex.dispose()
+    glowTex.dispose()
+    coreTex.dispose()
   }
 
   return { spawnTracer, spawnMuzzle, spawnFlash, attach, sync, reset, dispose }

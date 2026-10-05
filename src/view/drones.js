@@ -6,6 +6,10 @@
  * no organic silhouette, rotor discs spinning fast enough to blur into rings,
  * and a status light that pulses. Everything else is too small to see.
  *
+ * The hull is a Blender model (CFG.drone.modelUrl, vertex-coloured, flat-lit)
+ * swapped in when its fetch lands; until then, or if it 404s, the procedural
+ * box hull below stands in. Both share the rotor and lamp anchors here.
+ *
  * The bolt is drawn as a stretched core plus an additive halo, oriented ALONG
  * its own velocity -- a round bead gives the eye nothing to read direction from,
  * and the whole point of a drone shot is that it flies somewhere the squad is
@@ -14,10 +18,11 @@
  * Read-only over sim state.
  */
 import {
-  AdditiveBlending, BoxGeometry, CircleGeometry, Color, CylinderGeometry, Group,
-  IcosahedronGeometry, InstancedMesh, Matrix4, MeshBasicMaterial, Object3D,
-  Quaternion, SRGBColorSpace, Vector3,
+  AdditiveBlending, BoxGeometry, BufferAttribute, CircleGeometry, Color, CylinderGeometry,
+  IcosahedronGeometry, InstancedMesh, Matrix4, MeshBasicMaterial, MeshLambertMaterial,
+  Object3D, Quaternion, SRGBColorSpace, Vector3,
 } from 'three'
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { CFG } from '../config.js'
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
 
@@ -26,6 +31,8 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
 const BODY = new Color().setHex(0x55688A, SRGBColorSpace)
 const TRIM = new Color().setHex(0x8FA6C4, SRGBColorSpace)
 const ROTOR = new Color().setHex(0xC8D8EE, SRGBColorSpace)
+// The hull carries its colours per vertex; the instance tint stays neutral.
+const HULL_TINT = new Color(1, 1, 1)
 const LAMP_OK = new Color().setHex(0x63E8FF, SRGBColorSpace)
 const LAMP_LOW = new Color().setHex(0xFF7A4A, SRGBColorSpace)
 const BOLT_CORE = new Color().setHex(0xFFE9A8, SRGBColorSpace)
@@ -41,34 +48,79 @@ const _dummy = new Object3D()
 const tint = new Color()
 
 /** Rotor arm offsets. A square quad reads as a drone at any silhouette size. */
-const ARMS = [[-0.42, -0.34], [0.42, -0.34], [-0.42, 0.34], [0.42, 0.34]]
+export const ARMS = [[-0.42, -0.34], [0.42, -0.34], [-0.42, 0.34], [0.42, 0.34]]
+/** Rotor disc height, just above the model's guard rings and motor caps. */
+export const ROTOR_Y = 0.115
+/** Status lamp, on top of the deck: the camera looks down on the drone, so
+ *  a lamp slung under the nose was hidden by the hull. */
+export const LAMP_POS = [0, 0.14, 0.10]
+
+function paint(geo, color) {
+  const n = geo.attributes.position.count
+  const c = new Float32Array(n * 3)
+  for (let i = 0; i < n; i++) color.toArray(c, i * 3)
+  geo.setAttribute('color', new BufferAttribute(c, 3))
+  return geo
+}
 
 /** One merged geometry so a drone is a single instanced draw. */
 export function buildDroneHullGeometry() {
   const parts = []
   const chassis = new BoxGeometry(0.62, 0.17, 0.50)
-  parts.push(chassis)
+  parts.push(paint(chassis, BODY))
   const canopy = new BoxGeometry(0.30, 0.13, 0.26)
   canopy.translate(0, 0.13, -0.04)
-  parts.push(canopy)
+  parts.push(paint(canopy, TRIM))
   for (const [ax, az] of ARMS) {
     const arm = new BoxGeometry(0.30, 0.055, 0.075)
-    arm.rotateY(Math.atan2(az, ax))
+    arm.rotateY(Math.atan2(-az, ax))
     arm.translate(ax * 0.55, 0.02, az * 0.55)
-    parts.push(arm)
+    parts.push(paint(arm, BODY))
     const pod = new CylinderGeometry(0.075, 0.075, 0.09, 6)
     pod.translate(ax, 0.06, az)
-    parts.push(pod)
+    parts.push(paint(pod, BODY))
   }
   const skid = new BoxGeometry(0.50, 0.035, 0.035)
   skid.translate(0, -0.14, 0)
-  parts.push(skid)
+  parts.push(paint(skid, BODY))
   // Drop uv before merging: BoxGeometry and CylinderGeometry disagree on uv2
   // presence, and mergeGeometries refuses a set with mismatched attributes.
   for (const p of parts) { p.deleteAttribute('uv'); p.deleteAttribute('normal') }
   const g = mergeGeometries(parts, false)
   for (const p of parts) p.dispose()
   return g
+}
+
+/**
+ * Fetch the modelled hull and hand `onGeometry` its own copy (position +
+ * colour only; the caller owns and disposes it). The fetch runs once however
+ * many callers ask -- the escort and the bubble token both wear this model.
+ * Fire-and-forget: on failure `onGeometry` never runs and callers keep what
+ * they have.
+ */
+let hullLoad = null
+export function loadDroneHull(onGeometry) {
+  if (!hullLoad) {
+    hullLoad = new Promise((resolve) => {
+      new GLTFLoader().load(CFG.drone.modelUrl, (gltf) => {
+        let geo = null
+        gltf.scene.traverse((o) => { if (!geo && o.isMesh) geo = o.geometry })
+        if (!geo || !geo.attributes.color) {
+          console.warn('drone model has no vertex-coloured mesh:', CFG.drone.modelUrl)
+          resolve(null)
+          return
+        }
+        for (const name of Object.keys(geo.attributes)) {
+          if (name !== 'position' && name !== 'color') geo.deleteAttribute(name)
+        }
+        resolve(geo)
+      }, undefined, () => {
+        console.warn('no drone model at', CFG.drone.modelUrl)
+        resolve(null)
+      })
+    })
+  }
+  hullLoad.then((geo) => { if (geo) onGeometry(geo.clone()) })
 }
 
 export function createDrones(scene) {
@@ -81,12 +133,22 @@ export function createDrones(scene) {
 
   const hullGeo = keep(geos, buildDroneHullGeometry())
 
-  const hullMat = keep(mats, new MeshBasicMaterial({ toneMapped: true }))
+  // Lit and flat-shaded so the panels separate; normals come from screen-space
+  // derivatives, which is why neither hull carries a normal attribute.
+  const hullMat = keep(mats, new MeshLambertMaterial({ vertexColors: true, flatShading: true }))
   const hull = new InstancedMesh(hullGeo, hullMat, cap)
   hull.castShadow = true
   hull.frustumCulled = false
   hull.count = 0
   scene.add(hull)
+
+  let disposed = false
+  loadDroneHull((geo) => {
+    if (disposed) { geo.dispose(); return }
+    geos.splice(geos.indexOf(hull.geometry), 1)
+    hull.geometry.dispose()
+    hull.geometry = keep(geos, geo)
+  })
 
   // ---- rotors: one disc per arm, so cap * 4 instances ------------------------
   const rotorGeo = keep(geos, new CircleGeometry(0.20, 10).rotateX(-Math.PI * 0.5))
@@ -133,7 +195,7 @@ export function createDrones(scene) {
   // attribute lazily, and the allocation re-links the program (forward AND the
   // hull's shadow-depth variant) on the exact frame the first drone appears --
   // felt as a hitch right after the reward that granted it.
-  for (let i = 0; i < cap; i++) hull.setColorAt(i, BODY)
+  for (let i = 0; i < cap; i++) hull.setColorAt(i, HULL_TINT)
   for (let i = 0; i < cap * ARMS.length; i++) rotors.setColorAt(i, ROTOR)
   for (let i = 0; i < cap; i++) lamps.setColorAt(i, ROTOR)
   for (let i = 0; i < boltCap; i++) { bolts.setColorAt(i, BOLT_CORE); boltHalo.setColorAt(i, BOLT_HALO) }
@@ -167,13 +229,13 @@ export function createDrones(scene) {
       _dummy.scale.setScalar(1)
       _dummy.updateMatrix()
       hull.setMatrixAt(n, _dummy.matrix)
-      hull.setColorAt(n, BODY)
+      hull.setColorAt(n, HULL_TINT)
 
       for (let a = 0; a < ARMS.length; a++) {
         const [ax, az] = ARMS[a]
         // Counter-rotating pairs, and fast enough that the disc reads as blur.
         const spin = clock * (a % 2 === 0 ? 41 : -41) + a
-        _pos.set(ax, 0.115, az)
+        _pos.set(ax, ROTOR_Y, az)
         _pos.applyEuler(_dummy.rotation).add(_dummy.position)
         _q.setFromAxisAngle(_up, spin)
         _scl.set(1, 1, 1)
@@ -183,7 +245,7 @@ export function createDrones(scene) {
         r++
       }
 
-      _pos.set(0, -0.10, -0.20)
+      _pos.set(LAMP_POS[0], LAMP_POS[1], LAMP_POS[2])
       _pos.applyEuler(_dummy.rotation).add(_dummy.position)
       const pulse = 0.7 + 0.3 * Math.sin(clock * (dying ? 16 : 5))
       _scl.setScalar(pulse)
@@ -250,6 +312,7 @@ export function createDrones(scene) {
   }
 
   function dispose() {
+    disposed = true
     for (const mesh of [hull, rotors, lamps, bolts, boltHalo]) scene.remove(mesh)
     for (const g of geos) g.dispose()
     for (const mt of mats) mt.dispose()

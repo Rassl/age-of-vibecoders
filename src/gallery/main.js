@@ -30,13 +30,18 @@ import {
   buildWingGeometry,
 } from '../view/geometry.js'
 import { createBossHead } from '../view/bosshead.js'
+import { loadCharacterModel } from '../view/charmodel.js'
 import {
   bakeCanLabel, buildDroneToken, buildEnergyCan, buildMinigun, buildNarrowClusterGeometry,
   buildSoldierTrio, buildWallClusterGeometry, createLabelledContentMaterial, createProps,
+  droneTokenFromHull,
 } from '../view/props.js'
 import { createGates } from '../view/gates.js'
 import { createGlyphAtlas } from '../view/atlas.js'
-import { buildDroneHullGeometry } from '../view/drones.js'
+import {
+  ARMS as DRONE_ARMS, LAMP_POS as DRONE_LAMP, ROTOR_Y as DRONE_ROTOR_Y,
+  buildDroneHullGeometry, loadDroneHull,
+} from '../view/drones.js'
 import { buildWatermelonGeometry } from '../fx/melons.js'
 import { WEAPONS } from '../data/weapons.js'
 
@@ -143,7 +148,27 @@ for (const kind of KINDS) {
     build() {
       const opt = enemyShaderOpts(kind)
       opt.key = 'g-' + kind
-      return charMesh(enemyGeoFns[kind](), ENEMY_RIGS[kind], ANIM[kind], opt, 0x161a12)
+      const mesh = charMesh(enemyGeoFns[kind](), ENEMY_RIGS[kind], ANIM[kind], opt, 0x161a12)
+      // Same swap as createCharacters: the modelled body, with its own
+      // texture, joint pivots and gait, once it loads.
+      const url = CFG.zombie.modelUrls && CFG.zombie.modelUrls[kind]
+      if (url) {
+        loadCharacterModel(url, (model) => {
+          const mopt = enemyShaderOpts(kind)
+          mopt.key = 'g-' + kind + ':model'
+          const mat = charShader(
+            new MeshLambertMaterial({ map: model.map, vertexColors: true, flatShading: !model.map, emissive: 0x161a12 }),
+            { ...ENEMY_RIGS[kind], ...model.rig }, { ...ANIM[kind], ...model.anim },
+            { ...mopt, instanced: false, uniforms: U },
+          )
+          mesh.geometry.dispose()
+          mesh.geometry = model.geometry
+          mesh.material.dispose()
+          mesh.material = mat
+          mesh.customDepthMaterial = mat.userData.depthMaterial
+        })
+      }
+      return mesh
     },
   })
 }
@@ -206,23 +231,25 @@ entries.push({
   group: 'Items', name: 'Escort drone',
   build() {
     const g = new Group()
-    // Same cosmetics as createDrones: flat-colour hull, blurred rotor discs, lamp.
-    const hull = new Mesh(buildDroneHullGeometry(), new MeshBasicMaterial({ color: 0x55688A }))
+    // Same cosmetics as createDrones: vertex-coloured flat-lit hull (the model
+    // once it loads), blurred rotor discs, lamp.
+    const hull = new Mesh(buildDroneHullGeometry(), lambert({ vertexColors: true }))
     hull.castShadow = true
     g.add(hull)
+    loadDroneHull((geo) => { hull.geometry.dispose(); hull.geometry = geo })
     const rotorGeo = new CircleGeometry(0.20, 10).rotateX(-Math.PI * 0.5)
     const rotorMat = new MeshBasicMaterial({
       color: 0xC8D8EE, transparent: true, opacity: 0.30, depthWrite: false,
     })
-    for (const [ax, az] of [[-0.42, -0.34], [0.42, -0.34], [-0.42, 0.34], [0.42, 0.34]]) {
+    for (const [ax, az] of DRONE_ARMS) {
       const r = new Mesh(rotorGeo, rotorMat)
-      r.position.set(ax, 0.13, az)
+      r.position.set(ax, DRONE_ROTOR_Y, az)
       g.add(r)
     }
     const lamp = new Mesh(new IcosahedronGeometry(0.075, 0), new MeshBasicMaterial({
       color: 0x63E8FF, transparent: true, blending: AdditiveBlending, depthWrite: false,
     }))
-    lamp.position.set(0, 0.22, -0.06)
+    lamp.position.set(...DRONE_LAMP)
     g.add(lamp)
     g.position.y = 1.0
     const wrap = new Group()
@@ -241,7 +268,12 @@ entries.push({
 })
 entries.push({
   group: 'Items', name: 'Reward: drone token',
-  build: () => liftedToken(buildDroneToken()),
+  build() {
+    const wrap = liftedToken(buildDroneToken())
+    const mesh = wrap.children[0]
+    loadDroneHull((hull) => { mesh.geometry.dispose(); mesh.geometry = droneTokenFromHull(hull) })
+    return wrap
+  },
 })
 entries.push({
   group: 'Items', name: 'Reward: minigun',

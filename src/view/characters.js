@@ -50,6 +50,7 @@ import {
   buildRunnerGeometry, buildSoldierGeometry, buildSpitterGeometry, buildWalkerGeometry,
 } from './geometry.js'
 import { createBossHead } from './bosshead.js'
+import { loadCharacterModel } from './charmodel.js'
 
 /**
  * Set `LIMB_ANIM.enabled = false` BEFORE createCharacters() for the static
@@ -570,6 +571,8 @@ export function createCharacters(scene) {
   )
 
   const enemyMats = []
+  // Textures of loaded enemy models; owned here, freed in dispose().
+  const enemyMaps = []
   for (let k = 0; k < KINDS.length; k++) {
     const kind = KINDS[k]
     enemyMats.push(charShader(
@@ -608,6 +611,44 @@ export function createCharacters(scene) {
   const ZCAP = CFG.pool.zombies + CORPSE_CAP
   const crowds = []
   for (let k = 0; k < KINDS.length; k++) crowds.push(makeCrowd(enemyGeos[k], enemyMats[k], ZCAP))
+
+  // Modelled bodies replace the procedural ones as their fetches land. The
+  // per-body instanced attributes live on the geometry, so they are moved
+  // across (attachAttrs) the same way a weapon tier-up swaps the gun mesh.
+  // A model brings its own material: its texture, its measured joint pivots
+  // and its gait overrides compile into a fresh charShader (own cache key).
+  let disposed = false
+  for (let k = 0; k < KINDS.length; k++) {
+    const kind = KINDS[k]
+    const url = CFG.zombie.modelUrls && CFG.zombie.modelUrls[kind]
+    if (!url) continue
+    loadCharacterModel(url, (model) => {
+      if (disposed) { model.geometry.dispose(); if (model.map) model.map.dispose(); return }
+      const opt = enemyShaderOpts(kind)
+      opt.key = kind + ':model'
+      const mat = charShader(
+        new MeshLambertMaterial({
+          map: model.map, vertexColors: true, flatShading: !model.map, emissive: 0x161a12,
+        }),
+        { ...ENEMY_RIGS[kind], ...model.rig }, { ...ANIM[kind], ...model.anim }, opt,
+      )
+      const rec = crowds[k]
+      attachAttrs(model.geometry, rec)
+      rec.mesh.geometry = model.geometry
+      rec.mesh.material = mat
+      rec.mesh.customDepthMaterial = mat.userData.depthMaterial
+      // Detach the shared per-body attributes first: disposing a geometry
+      // frees the GPU buffers of everything still attached to it.
+      const old = enemyGeos[k]
+      for (const name of ['aPhase', 'aFlash', 'aDrive', 'aGait', 'aTint']) old.deleteAttribute(name)
+      old.dispose()
+      enemyGeos[k] = model.geometry
+      enemyMats[k].userData.depthMaterial.dispose()
+      enemyMats[k].dispose()
+      enemyMats[k] = mat
+      if (model.map) enemyMaps.push(model.map)
+    })
+  }
 
   const bars = makeHpBars(HP_BAR_CAP)
 
@@ -1132,6 +1173,8 @@ export function createCharacters(scene) {
       bars.mesh.dispose()
       bars.geo.dispose()
       bars.mat.dispose()
+      disposed = true
+      for (const map of enemyMaps) map.dispose()
       soldierGeo.dispose()
       joinerGeo.dispose()
       for (let i = 0; i < gunGeos.length; i++) gunGeos[i].dispose()

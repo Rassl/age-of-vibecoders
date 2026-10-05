@@ -31,6 +31,7 @@ import { clamp, lerp, remap } from '../util/math.js'
 import { soldiersPerBubble } from '../curves.js'
 import { WEAPONS, MAX_TIER } from '../data/weapons.js'
 import { Rng } from '../util/rng.js'
+import { loadDroneHull } from './drones.js'
 
 // ---------------------------------------------------------------- frame scratch
 // Hoisted to module scope: sync() runs at 60Hz over a dozen props and must not
@@ -597,6 +598,9 @@ export function buildWallClusterGeometry() {
  * square hull, four rotor discs -- because the whole job of this model is to let
  * the player recognise, from across the corridor, that the expensive lane holds
  * the thing they already have one of.
+ *
+ * This box version is the stand-in until the escort's model loads; then
+ * createProps swaps in droneTokenFromHull().
  */
 export function buildDroneToken() {
   const hull = new BoxGeometry(0.30, 0.085, 0.24)
@@ -618,6 +622,41 @@ export function buildDroneToken() {
   podG.dispose()
   discG.dispose()
   return mergeParts(parts, 'uv')
+}
+
+/**
+ * Token size relative to the escort. The model spans 1.34u across its guard
+ * rings; at 0.75 its farthest corner (~0.67u from the spin axis) stays inside
+ * the 0.85 shell while filling about as much of it as the soldier trio does.
+ */
+const DRONE_TOKEN_SCALE = 0.75
+
+/**
+ * The token built from the escort's own modelled hull (loadDroneHull), so the
+ * two stay the same silhouette by construction. The model carries no rotor
+ * discs (the escort spins those as separate instances), so the token shows
+ * the guard rings instead. Consumes `hull`.
+ */
+export function droneTokenFromHull(hull) {
+  const g = hull.index ? hull.toNonIndexed() : hull.clone()
+  hull.dispose()
+  g.scale(DRONE_TOKEN_SCALE, DRONE_TOKEN_SCALE, DRONE_TOKEN_SCALE)
+  // The contents shader reads colour as vec3 and lights by normal; the model
+  // exports RGBA colour and no normals (the escort derives them per pixel).
+  const col = g.attributes.color
+  if (col.itemSize !== 3) {
+    const n = col.count
+    const rgb = new Float32Array(n * 3)
+    for (let i = 0; i < n; i++) {
+      rgb[i * 3] = col.getX(i)
+      rgb[i * 3 + 1] = col.getY(i)
+      rgb[i * 3 + 2] = col.getZ(i)
+    }
+    g.setAttribute('color', new BufferAttribute(rgb, 3))
+  }
+  g.computeVertexNormals() // non-indexed, so these are flat face normals
+  g.computeBoundingSphere()
+  return g
 }
 
 /**
@@ -901,7 +940,7 @@ export function createProps(scene, atlas) {
   const shellGeo = keep(geos, new IcosahedronGeometry(SHELL_R, 2))
   const ringGeo = keep(geos, new TorusGeometry(0.93, 0.055, 6, 84))
   const trioGeo = keep(geos, buildSoldierTrio())
-  const droneTokenGeo = keep(geos, buildDroneToken())
+  let droneTokenGeo = keep(geos, buildDroneToken())
   const gunGeo = keep(geos, buildMinigun())
   const canGeo = keep(geos, buildEnergyCan())
 
@@ -1515,7 +1554,19 @@ function apparentK(x, y, z, base, minPx, maxK) {
     }
   }
 
+  // Swap the box token for the modelled one once the escort's model lands.
+  let disposed = false
+  loadDroneHull((hull) => {
+    if (disposed) { hull.dispose(); return }
+    const next = droneTokenFromHull(hull)
+    geos.splice(geos.indexOf(droneTokenGeo), 1)
+    droneTokenGeo.dispose()
+    droneTokenGeo = keep(geos, next)
+    for (let k = 0; k < N; k++) bubbles[k].droneToken.geometry = next
+  })
+
   function dispose() {
+    disposed = true
     scene.remove(root)
     for (let i = 0; i < geos.length; i++) geos[i].dispose()
     for (let i = 0; i < mats.length; i++) mats[i].dispose()

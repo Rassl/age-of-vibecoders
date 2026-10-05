@@ -374,6 +374,26 @@ GmbH, which has no connection to this project; the label is drawn procedurally
 (`view/props.js bakeCanLabel`) and uses none of the company's artwork. Swap it for your own
 via `CFG.wings.labelUrl` before distributing.
 
+## Third-party assets
+
+These files are NOT covered by the MIT license below; each keeps its own license.
+
+The five enemy bodies in `public/models/` are based on Sketchfab models, all licensed
+under [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/). Changes to each: posed
+(from the model's own rig or animation where it had one), decimated, texture downscaled
+or packed into one atlas, rescaled, and limb-tagged for the game's vertex-shader rig.
+
+- `walker.glb` — ["Zombie"](https://sketchfab.com/3d-models/zombie-0541416bd635486f95cb3d44f8f676c1)
+  by [Grim Greg](https://sketchfab.com/GrimZu)
+- `runner.glb` — ["Ghoul"](https://sketchfab.com/3d-models/ghoul-f37f43b23fd541df8a2926571acfce70)
+  by [DJMaesen](https://sketchfab.com/bumstrum)
+- `brute.glb` — ["muscular zombie"](https://sketchfab.com/3d-models/muscular-zombie-4078c4fd50124f46b287501fd1f3e387)
+  by [the gamer wolf](https://sketchfab.com/emiandress2712)
+- `spitter.glb` — ["Zzzombie"](https://sketchfab.com/3d-models/zzzombie-11288a13467a4993bba16a3805c17d8e)
+  by [LxNazarov](https://sketchfab.com/LxNazarov)
+- `bloater.glb` — ["Fat Man Zombie"](https://sketchfab.com/3d-models/fat-man-zombie-d21f6917d40944a7b92b56a94d474d1e)
+  by [DeliciousDynamite](https://sketchfab.com/PixelDynamix)
+
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT — see [LICENSE](LICENSE) (code and original assets; see Third-party assets above).

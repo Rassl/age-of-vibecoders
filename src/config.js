@@ -160,6 +160,13 @@ export const CFG = {
     spitSpeed: 15,        // acid projectile
     spitRadius: 1.25,     // how close it has to land to take a soldier
     spitKills: 1,
+    // Blender-modelled bodies per kind, served from public/ (sources in
+    // assets-src/). A kind with no entry, or whose fetch fails, keeps its
+    // procedural body from view/geometry.js.
+    modelUrls: {
+      walker: 'models/walker.glb', runner: 'models/runner.glb', brute: 'models/brute.glb',
+      spitter: 'models/spitter.glb', bloater: 'models/bloater.glb',
+    },
   },
 
   threat: {
@@ -478,6 +485,9 @@ export const CFG = {
     boltSpeed: 58,
     homingTau: 0.10,
     boltLife: 2.0,
+    // Hull model, served from public/ (source: assets-src/drone.blend). If the
+    // fetch fails the drone keeps its procedural box hull.
+    modelUrl: 'models/drone.glb',
   },
 
   /**
@@ -529,8 +539,10 @@ export const CFG = {
   },
 
   pool: {
+    // muzzle: flash sprites, shared by muzzle flashes and every impact flash
+    // (laser hits on bodies included), so it is sized above the muzzles alone.
     soldiers: 256, joiners: 48, zombies: 220, props: 12, shockwaves: 12,
-    impacts: 256, tracers: 256, muzzle: 32, particles: 4096, glyphs: 96, spits: 48,
+    impacts: 256, tracers: 256, muzzle: 48, particles: 4096, glyphs: 96, spits: 48,
     decals: 64, rings: 512, eventRing: 2048, chunks: 48,
     drones: 4, bolts: 48,
   },

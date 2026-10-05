@@ -138,8 +138,16 @@ const overlay = createOverlay(overlayRoot, onStart, onRestart, onReplay)
 // rather than rigging the dice. Persisted so the loop survives a reload;
 // storage is best-effort -- a blocked localStorage just means every session
 // starts at round 1.
+//
+// Step and cap measured with tools/sweep.mjs (9 seeds x 6 skill levels):
+// ADVANCE and HOLD rounds win ~80% at 1.18-1.24, ~60% at 1.30 (HOLD: 1/9 for
+// the competent bot) and collapse at 1.45 (1/9 even for the expert bot);
+// TURRET rounds stay easy throughout. The old 0.15 step put round 4 at 1.45
+// -- a wall, not a ramp -- so the step is 0.06 and the scalar stops at 1.24,
+// which rounds 2-5 climb to and every later round holds.
 const ROUND_KEY = 'aov-round'
-const DIFFICULTY_PER_ROUND = 0.15
+const DIFFICULTY_PER_ROUND = 0.06
+const DIFFICULTY_MAX = 1.24
 
 function loadRound() {
   try {
@@ -177,7 +185,7 @@ function roundMode() {
 }
 
 function applyRound() {
-  CFG.difficulty = 1 + DIFFICULTY_PER_ROUND * (round - 1)
+  CFG.difficulty = Math.min(DIFFICULTY_MAX, 1 + DIFFICULTY_PER_ROUND * (round - 1))
   overlay.setRound(round, roundMode())
 }
 applyRound()

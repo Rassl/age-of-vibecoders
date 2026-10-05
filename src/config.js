@@ -137,7 +137,7 @@ export const CFG = {
     radius: 0.7,
     y: 1.1,
     // Raised 2/0.052/8 -> 3/0.08/12: a sphere paid 2-3 bodies in the opening
-    // and capped at 8, which by round 3 (difficulty 1.30) was not enough to
+    // and capped at 8, which at difficulty 1.30 (now the NG+ cap) was not enough to
     // keep pace with the horde. It now pays 3 at the start, ~7 by the midpoint
     // and up to 12 in the crescendo.
     perBubbleBase: 3,
@@ -243,7 +243,7 @@ export const CFG = {
     // good aim.
     //
     // Measured headless with a PERFECT-aim policy (reticle always on the
-    // nearest prop) at the mode's natural slot, round 3 (difficulty 1.30),
+    // nearest prop) at difficulty 1.30 (the NG+ cap; then round 3's slot),
     // three seeds: 0.75 -> 20/20 bubbles, peak ~120, the pair beat deleted;
     // 0.50 -> 3/3 wins, 10/20 bubbles, peak 40-57, 2-4 breaches; 0.35 ->
     // 3/6 wins; 0.25 -> 3/6. A flawless gunner should clear it with room and

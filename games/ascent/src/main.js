@@ -24,7 +24,7 @@ import { Smoke } from './smoke.js';
 import { fetchBuildings, buildBuildings, facadeTexture, HIDE_ABOVE } from './buildings.js';
 import { fetchLandmarks, fetchCities, fetchSummary } from './places.js';
 import { Markers } from './markers.js';
-import { HUD, PlaceCard } from './hud.js';
+import { HUD, PlaceCard, loadShown, saveShown } from './hud.js';
 import { Cockpit } from './cockpit.js';
 
 const PRESETS = [
@@ -104,6 +104,7 @@ class Ascent {
     this.scene.add(this.sky.root, this.world, this.earth.mesh, this.markers.root, this.card.group, this.hud.status.group);
     this.cockpit = new Cockpit(this.hud.controls, this.hud.gauge, environment());
     this.scene.add(this.cockpit.root);
+    for (const part of ['gauge', 'controls']) this.cockpit.setShown(part, this.hud.shown[part]);
 
     this.flight = new Flight();
     this.phase = 'intro';
@@ -393,7 +394,17 @@ class Ascent {
       else if (t.id === 'keep') this.hud.confirming = false;
       else if (t.id === 'end' || t.id === 'home') endFlight();
       else if (t.id === 'again') flyAgain();
+      else if (t.id === 'hideGauge' || t.id === 'showGauge') this.setPanel('gauge', t.id === 'showGauge');
+      else if (t.id === 'hideControls' || t.id === 'showControls') this.setPanel('controls', t.id === 'showControls');
     }
+  }
+
+  /** Folds a console part away or brings it back, and remembers the choice. */
+  setPanel(part, on) {
+    this.hud.shown[part] = on;
+    this.cockpit.setShown(part, on);
+    saveShown(this.hud.shown);
+    syncConsoleOptions();
   }
 
   dispose() {
@@ -524,7 +535,21 @@ const ui = {
   launch: document.getElementById('launch'), enter: document.getElementById('enter'),
   modeVR: document.getElementById('modeVR'), modeFlat: document.getElementById('modeFlat'),
   start: document.getElementById('start'), places: document.getElementById('places'), where: document.getElementById('where'), speed: document.getElementById('speed'), speedOut: document.getElementById('speedOut'), status: document.getElementById('status'),
+  optGauge: document.getElementById('optGauge'), optControls: document.getElementById('optControls'),
 };
+// Console parts: the checkboxes mirror the saved choice, and a change on the
+// launch page applies to the next flight (a running one uses its own tabs).
+function syncConsoleOptions() {
+  const shown = loadShown();
+  ui.optGauge.checked = shown.gauge; ui.optControls.checked = shown.controls;
+}
+syncConsoleOptions();
+for (const [el, part] of [[ui.optGauge, 'gauge'], [ui.optControls, 'controls']]) {
+  el.addEventListener('change', () => {
+    const shown = loadShown(); shown[part] = el.checked; saveShown(shown);
+    if (app) app.setPanel(part, el.checked);
+  });
+}
 function setStatus(s) { ui.status.textContent = s; }
 
 // The hidden <select> holds the choice; the tiles show it.
@@ -676,7 +701,13 @@ ui.enter.addEventListener('click', async () => {
   renderer.xr.getReferenceSpace()?.addEventListener('reset', () => { if (app) app.cockpit.placed = false; });
   begin(await resolveStart());
 });
-addEventListener('keydown', (e) => { if (e.key === 'Escape' && app && !session) returnToLaunch(); });
+addEventListener('keydown', (e) => {
+  if (!app || session) return;
+  if (e.key === 'Escape') returnToLaunch();
+  // In a window: G and C fold the gauge and the controls, like their tabs.
+  else if (e.key === 'g' || e.key === 'G') app.setPanel('gauge', !app.hud.shown.gauge);
+  else if (e.key === 'c' || e.key === 'C') app.setPanel('controls', !app.hud.shown.controls);
+});
 
 function returnToLaunch() {
   app?.dispose(); app = null;

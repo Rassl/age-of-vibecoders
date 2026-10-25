@@ -93,6 +93,11 @@ details { margin: 18px auto 0; text-align: left; color: var(--muted); font-size:
 summary { cursor: pointer; color: var(--faint); }
 details label { display: block; margin-top: 10px; }
 input[type=range] { width: 100%; accent-color: var(--accent); }
+.opts { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+.opts .check { display: flex; align-items: baseline; gap: 10px; margin-top: 8px; color: var(--text); cursor: pointer; }
+.opts .check input { accent-color: var(--accent); width: 16px; height: 16px; flex: none; position: relative; top: 2px; }
+.opts .check small { color: var(--faint); font-size: 13px; }
+.opts .note { margin: 8px 0 0; font-size: 13px; color: var(--faint); }
 .status { font-size: 13px; }
 .credits { font-size: 11px; color: rgba(244,246,251,0.32); margin: 18px 0 0; text-align: center; }
 .diag { background: rgba(255, 170, 60, 0.12); border: 1px solid rgba(255, 170, 60, 0.35); color: #ffd7a0; border-radius: 14px; padding: 10px 14px; font-size: 15px; margin: 12px 0 0; text-align: left; }

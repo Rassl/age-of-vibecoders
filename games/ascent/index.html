@@ -76,6 +76,11 @@
         <label>Speed <output id="speedOut">1.0×</output>
           <input id="speed" type="range" min="0.3" max="4" step="0.1" value="1" />
         </label>
+        <div class="opts" role="group" aria-label="Console">
+          <label class="check"><input id="optGauge" type="checkbox" checked /> Altitude gauge <small>the rocket on its climb</small></label>
+          <label class="check"><input id="optControls" type="checkbox" checked /> Control panel <small>move, climb, turn</small></label>
+          <p class="note">Either folds to a small tab in flight; in a window, G and C toggle them.</p>
+        </div>
         <p id="status" class="status"></p>
       </details>
       <p class="credits">Imagery © Esri, Maxar, Earthstar Geographics · Buildings © OpenStreetMap contributors · Places © Wikipedia, Wikidata · Sky and textures © Poly Haven (CC0) · Earth © NASA</p>

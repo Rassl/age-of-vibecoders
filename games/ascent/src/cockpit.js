@@ -31,6 +31,7 @@ export class Cockpit {
     body.scale.set(1.2, 1, 0.8);
     body.rotation.x = 0; body.position.set(0, -DESK.t - 0.06, -0.02);
     this.desk.add(slab, inset, lip, body);
+    this.deskFurniture = [slab, inset, lip, body];
     // Control cluster flat on the desk.
     const c = controls.group;
     c.rotation.x = -Math.PI / 2;
@@ -48,10 +49,19 @@ export class Cockpit {
     const glow = new THREE.Mesh(new THREE.BoxGeometry(0.004, 0.4, 0.004), trim);
     glow.position.set(0.152, 0, -0.004);
     this.screen.add(bezel, glow);
+    this.screenFurniture = [bezel, glow];
     gauge.group.position.set(0, 0, 0.001);
     this.screen.add(gauge.group);
     this.gauge = gauge;
     this.root.add(this.desk, this.screen);
+  }
+
+  /** Shows or folds away one part of the console: 'gauge' (the altitude
+   *  screen) or 'controls' (the desk). The panel itself stays, drawn as a
+   *  small tab, so the part can be brought back from where it was. */
+  setShown(part, on) {
+    const furniture = part === 'gauge' ? this.screenFurniture : this.deskFurniture;
+    for (const m of furniture) m.visible = on;
   }
 
   /** Stands the console in front of the eye, along the facing `heading`. */

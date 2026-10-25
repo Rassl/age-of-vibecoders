@@ -25,6 +25,20 @@ const L = (m) => Math.log10(1 + Math.max(0, m) / 10);
 const L_ISS = L(400_000), L_TOP = L(TOP);
 const gaugePos = (m) => (L(m) <= L_ISS ? 0.85 * L(m) / L_ISS : 0.85 + 0.15 * (L(m) - L_ISS) / (L_TOP - L_ISS));
 
+/** Which console parts the user wants: the altitude gauge (the rocket on
+ *  its trajectory) and the control cluster. Either can be folded away to a
+ *  small tab, from the launch page or from the panel itself; the choice is
+ *  remembered across flights. */
+const PREF_KEY = 'ascent.console';
+export function loadShown() {
+  const shown = { gauge: true, controls: true };
+  try { Object.assign(shown, JSON.parse(localStorage.getItem(PREF_KEY) || '{}')); } catch {}
+  return shown;
+}
+export function saveShown(shown) {
+  try { localStorage.setItem(PREF_KEY, JSON.stringify(shown)); } catch {}
+}
+
 export class HUD {
   constructor() {
     this.status = new Panel(0.5, 'status');
@@ -32,6 +46,7 @@ export class HUD {
     this.gauge = new Panel(0.25, 'gauge', { bare: true, dpr: 2 });
     this.controls = new Panel(0.36, 'controls', { bare: true, dpr: 2 });
     this.confirming = false;
+    this.shown = loadShown();
     this.panels = [this.status, this.gauge, this.controls];
   }
 
@@ -90,24 +105,54 @@ export class HUD {
 
   drawGauge(s) {
     const P = this.gauge;
+    if (!this.shown.gauge) return P.render(['gauge-folded', P.pressed].join('|'), (c) => tab(c, 'showGauge', 'Altitude', 14, 200));
     const alt = altitudeString(s.altitude);
     const pos = gaugePos(s.altitude);
-    const key = [alt, Math.round(pos * 600), s.paused, s.phase].join('|');
+    const key = [alt, Math.round(pos * 600), s.paused, s.phase, P.pressed === 'hideGauge'].join('|');
     P.render(key, (c) => {
       const H = 760;
       if (!c.measuring) drawTrajectory(c.g, c.W, H, pos, alt, s.phase === 'arrived' ? 'In orbit' : s.paused ? 'Paused' : '');
-      return H;
+      // Fold-away tab under the strip, in the strip's own column.
+      return foldButton(c, 'hideGauge', H, 14, 176);
     });
   }
 
   drawControls(s) {
     const P = this.controls;
+    if (!this.shown.controls) return P.render(['ctl-folded', P.pressed].join('|'), (c) => tab(c, 'showControls', 'Controls', 20, 240));
     const key = ['ctl', P.pressed, s.paused, s.phase, this.confirming, s.dragHint].join('|');
     P.render(key, (c) => {
       if (this.confirming) return drawConfirm(c);
-      return drawControlCluster(c, P.pressed, s);
+      const H = drawControlCluster(c, P.pressed, s);
+      return foldButton(c, 'hideControls', H, 20, 496);
     });
   }
+}
+
+/** A folded panel: one small glass tab that brings it back. Returns the height. */
+function tab(c, id, label, x, w) {
+  const h = 56, y = 10;
+  c.panel.buttons.push({ id, x, y, w, h });
+  if (c.measuring) return y + h + 10;
+  const g = c.g, p = pill(x, y, w, h);
+  glass(g, p, { strength: 0.8 });
+  if (c.panel.pressed === id) glow(g, p);
+  chevron(g, x + 30, y + h / 2 + 2, 9, 0, 'rgba(255,255,255,0.9)', 4);
+  caption(g, label, x + 52, y + h / 2 + 1, { size: 17, alpha: 0.85, align: 'left' });
+  return y + h + 10;
+}
+
+/** A slim "Hide" row below a panel's content at `top`. Returns the new height. */
+function foldButton(c, id, top, x, w) {
+  const h = 50, y = top + 4;
+  c.panel.buttons.push({ id, x, y, w, h });
+  if (c.measuring) return y + h + 10;
+  const g = c.g, p = pill(x, y, w, h);
+  glass(g, p, { strength: 0.6 });
+  if (c.panel.pressed === id) glow(g, p);
+  chevron(g, x + w / 2 - 34, y + h / 2 + 2, 8, Math.PI, 'rgba(255,255,255,0.8)', 4);
+  caption(g, 'Hide', x + w / 2 + 10, y + h / 2 + 1, { size: 16, alpha: 0.7 });
+  return y + h + 10;
 }
 
 // ---------------------------------------------------------------------------

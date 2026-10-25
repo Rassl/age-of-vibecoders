@@ -51,12 +51,6 @@
         <p class="sub">Rise out of a quiet loft, through your city, all the way to orbit.</p>
       </header>
 
-      <ol class="steps">
-        <li><span class="ico">1</span><span><b>Look up</b>A portal opens in the ceiling.</span></li>
-        <li><span class="ico">2</span><span><b>Lift off</b>Engines roar, the city falls away.</span></li>
-        <li><span class="ico">3</span><span><b>Fly</b>Steer from your console, out to space.</span></li>
-      </ol>
-
       <h2>Start from</h2>
       <select id="start" hidden></select>
       <div id="places" class="places" role="radiogroup" aria-label="Start from"></div>
@@ -71,18 +65,6 @@
       </div>
       <p id="xrdiag" class="diag" hidden></p>
 
-      <details>
-        <summary>Flight options</summary>
-        <label>Speed <output id="speedOut">1.0×</output>
-          <input id="speed" type="range" min="0.3" max="4" step="0.1" value="1" />
-        </label>
-        <div class="opts" role="group" aria-label="Console">
-          <label class="check"><input id="optGauge" type="checkbox" checked /> Altitude gauge <small>the rocket on its climb</small></label>
-          <label class="check"><input id="optControls" type="checkbox" checked /> Control panel <small>move, climb, turn</small></label>
-          <p class="note">Either folds to a small tab in flight; in a window, G and C toggle them.</p>
-        </div>
-        <p id="status" class="status"></p>
-      </details>
       <p class="credits">Imagery © Esri, Maxar, Earthstar Geographics · Buildings © OpenStreetMap contributors · Places © Wikipedia, Wikidata · Sky and textures © Poly Haven (CC0) · Earth © NASA</p>
     </section>
   </main>

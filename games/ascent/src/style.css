@@ -51,9 +51,6 @@ h1 { font-size: 52px; line-height: 1.05; margin: 0 0 8px; letter-spacing: -0.035
   background: linear-gradient(180deg, #fff 30%, #a9c8ff); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .sub { color: var(--muted); margin: 0 auto; font-size: 18px; max-width: 440px; }
 
-.steps { list-style: none; padding: 0; margin: 0 0 26px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-.steps li { display: flex; flex-direction: column; gap: 8px; padding: 14px; border-radius: 18px; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--line); font-size: 14px; color: var(--muted); line-height: 1.35; }
-.steps b { display: block; color: var(--text); font-size: 16px; margin-bottom: 2px; }
 .ico { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 700; color: #cfe0ff; background: rgba(61, 139, 255, 0.22); border: 1px solid rgba(61, 139, 255, 0.45); }
 
 h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--faint); font-weight: 600; margin: 0 0 10px; }
@@ -89,23 +86,11 @@ button.secondary { background: rgba(255,255,255,0.1); color: var(--text); paddin
 .mode button[aria-checked="true"] { background: rgba(255,255,255,0.18); color: var(--text); font-weight: 600; }
 .mode button:disabled { opacity: 0.4; cursor: default; }
 
-details { margin: 18px auto 0; text-align: left; color: var(--muted); font-size: 15px; }
-summary { cursor: pointer; color: var(--faint); }
-details label { display: block; margin-top: 10px; }
-input[type=range] { width: 100%; accent-color: var(--accent); }
-.opts { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
-.opts .check { display: flex; align-items: baseline; gap: 10px; margin-top: 8px; color: var(--text); cursor: pointer; }
-.opts .check input { accent-color: var(--accent); width: 16px; height: 16px; flex: none; position: relative; top: 2px; }
-.opts .check small { color: var(--faint); font-size: 13px; }
-.opts .note { margin: 8px 0 0; font-size: 13px; color: var(--faint); }
-.status { font-size: 13px; }
 .credits { font-size: 11px; color: rgba(244,246,251,0.32); margin: 18px 0 0; text-align: center; }
 .diag { background: rgba(255, 170, 60, 0.12); border: 1px solid rgba(255, 170, 60, 0.35); color: #ffd7a0; border-radius: 14px; padding: 10px 14px; font-size: 15px; margin: 12px 0 0; text-align: left; }
 
 @media (max-width: 520px) {
   .card { padding: 26px 18px 20px; border-radius: 26px; }
   h1 { font-size: 42px; }
-  .steps { grid-template-columns: 1fr; }
-  .steps li { flex-direction: row; align-items: center; }
   .places { grid-template-columns: 1fr 1fr; }
 }

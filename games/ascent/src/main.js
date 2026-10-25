@@ -24,7 +24,7 @@ import { Smoke } from './smoke.js';
 import { fetchBuildings, buildBuildings, facadeTexture, HIDE_ABOVE } from './buildings.js';
 import { fetchLandmarks, fetchCities, fetchSummary } from './places.js';
 import { Markers } from './markers.js';
-import { HUD, PlaceCard, loadShown, saveShown } from './hud.js';
+import { HUD, PlaceCard, saveShown } from './hud.js';
 import { Cockpit } from './cockpit.js';
 
 const PRESETS = [
@@ -404,7 +404,6 @@ class Ascent {
     this.hud.shown[part] = on;
     this.cockpit.setShown(part, on);
     saveShown(this.hud.shown);
-    syncConsoleOptions();
   }
 
   dispose() {
@@ -534,23 +533,12 @@ let session = null;
 const ui = {
   launch: document.getElementById('launch'), enter: document.getElementById('enter'),
   modeVR: document.getElementById('modeVR'), modeFlat: document.getElementById('modeFlat'),
-  start: document.getElementById('start'), places: document.getElementById('places'), where: document.getElementById('where'), speed: document.getElementById('speed'), speedOut: document.getElementById('speedOut'), status: document.getElementById('status'),
-  optGauge: document.getElementById('optGauge'), optControls: document.getElementById('optControls'),
+  start: document.getElementById('start'), places: document.getElementById('places'), where: document.getElementById('where'),
 };
-// Console parts: the checkboxes mirror the saved choice, and a change on the
-// launch page applies to the next flight (a running one uses its own tabs).
-function syncConsoleOptions() {
-  const shown = loadShown();
-  ui.optGauge.checked = shown.gauge; ui.optControls.checked = shown.controls;
-}
-syncConsoleOptions();
-for (const [el, part] of [[ui.optGauge, 'gauge'], [ui.optControls, 'controls']]) {
-  el.addEventListener('change', () => {
-    const shown = loadShown(); shown[part] = el.checked; saveShown(shown);
-    if (app) app.setPanel(part, el.checked);
-  });
-}
-function setStatus(s) { ui.status.textContent = s; }
+// Flight speed: 1× unless the ?speed= switch says otherwise.
+const SPEED = DEBUG.speed || 1;
+// Loading progress has no line on the launch page any more; it goes to the console.
+function setStatus(s) { console.debug('[ascent]', s); }
 
 // The hidden <select> holds the choice; the tiles show it.
 ui.start.innerHTML = `<option value="here">My location</option>` + PRESETS.map((p) => `<option value="${p.id}">${p.name}</option>`).join('');
@@ -588,8 +576,6 @@ function prefetchPlace(p) {
   fetchLandmarks(p.lat, p.lon).catch(() => {});
 }
 fetchCities().catch(() => {});
-ui.speed.addEventListener('input', () => { ui.speedOut.textContent = `${parseFloat(ui.speed.value).toFixed(1)}×`; });
-if (DEBUG.speed) ui.speed.value = DEBUG.speed;
 
 // One Launch button; the toggle picks immersive VR or a flat window (drag to
 // look, click to press). Immersive is the default wherever VR is available.
@@ -678,7 +664,7 @@ async function resolveStart() {
 function begin(place) {
   cancelPrefetch?.();
   app?.dispose();
-  app = new Ascent({ ...place, label: place.id === 'here' ? null : place.name }, parseFloat(ui.speed.value));
+  app = new Ascent({ ...place, label: place.id === 'here' ? null : place.name }, SPEED);
   ui.launch.classList.add('hidden');
 }
 

@@ -3,13 +3,15 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<meta name="theme-color" content="#0b0d10" />
-<title>Age of Vibecoders</title>
-<meta name="description" content="Free browser games. No install, no account — open one and play." />
+<meta name="theme-color" content="#070b14" />
+<title>Age of Vibecoders — free browser games, Apple Vision Pro ready</title>
+<meta name="description" content="Free 3D games that run in the browser and in immersive mode on Apple Vision Pro. Squad Runner, a lane-runner shooter, and Ascent, a flight from your room to orbit. No install, no account." />
+<meta name="keywords" content="browser games, free games, Apple Vision Pro games, visionOS games, WebXR games, immersive web games, three.js games, Squad Runner, Ascent" />
+<link rel="canonical" href="https://www.ageofvibecoders.com/" />
 <meta property="og:type" content="website" />
 <meta property="og:site_name" content="Age of Vibecoders" />
-<meta property="og:title" content="Age of Vibecoders" />
-<meta property="og:description" content="Free browser games. No install, no account — open one and play." />
+<meta property="og:title" content="Age of Vibecoders — free browser games" />
+<meta property="og:description" content="Free 3D games in the browser, immersive on Apple Vision Pro. No install, no account — open one and play." />
 <meta property="og:url" content="https://www.ageofvibecoders.com/" />
 <meta property="og:image" content="https://www.ageofvibecoders.com/runner/og.png" />
 <meta property="og:image:width" content="1200" />
@@ -18,142 +20,268 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>🎮</text></svg>" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<!-- Same stack as the game's menu; Oswald covers platforms without Bahnschrift / DIN Alternate. -->
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;700&display=swap" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=Exo+2:wght@400;600;800&display=swap" />
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "name": "Age of Vibecoders",
+      "url": "https://www.ageofvibecoders.com/",
+      "description": "Free 3D games that run in the browser and in immersive mode on Apple Vision Pro."
+    },
+    {
+      "@type": "ItemList",
+      "name": "Games",
+      "itemListElement": [
+        {
+          "@type": "ListItem", "position": 1,
+          "item": {
+            "@type": "VideoGame",
+            "name": "Squad Runner",
+            "url": "https://www.ageofvibecoders.com/runner/",
+            "image": "https://www.ageofvibecoders.com/runner/og.png",
+            "description": "A squad lane-runner shooter. Drag to steer, your squad fires itself: shoot the orbs, grow the crowd, earn your wings.",
+            "genre": "Action",
+            "playMode": "SinglePlayer",
+            "applicationCategory": "Game",
+            "operatingSystem": "Web browser, visionOS",
+            "gamePlatform": ["Web browser", "Apple Vision Pro"],
+            "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+          }
+        },
+        {
+          "@type": "ListItem", "position": 2,
+          "item": {
+            "@type": "VideoGame",
+            "name": "Ascent",
+            "url": "https://www.ageofvibecoders.com/ascent/",
+            "image": "https://www.ageofvibecoders.com/ascent/og.png",
+            "description": "Rise out of a quiet loft, through your city, all the way to orbit. Built for Apple Vision Pro in WebXR; also plays in a window.",
+            "genre": "Flight",
+            "playMode": "SinglePlayer",
+            "applicationCategory": "Game",
+            "operatingSystem": "Web browser, visionOS",
+            "gamePlatform": ["Apple Vision Pro", "Web browser"],
+            "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+          }
+        }
+      ]
+    }
+  ]
+}
+</script>
 <style>
   :root {
-    --bg: #0b0d10; --ink: #f4f1ea; --sand: #e0c9a0; --sand-dim: #c2a878; --tip: #cff6ff;
-    --muted: #a9b2b8; --rule: rgba(224, 201, 160, .22);
+    --bg: #070b14; --ink: #e8eef7; --muted: #8fa3bd; --faint: #5b6b84;
+    --cyan: #3fd8ff; --cyan-deep: #0d6f96; --red: #ff4d5e; --line: rgba(160, 200, 255, .16);
+    --panel: rgba(10, 16, 28, .72);
+    --head: "Syncopate", "Exo 2", system-ui, sans-serif;
+    --body: "Exo 2", system-ui, -apple-system, sans-serif;
+    --slant: 7%;
   }
   * { box-sizing: border-box; }
   html { background: var(--bg); }
   html, body { margin: 0; }
   body {
-    font-family: "Bahnschrift", "DIN Alternate", "Oswald", system-ui, -apple-system, sans-serif;
-    -webkit-font-smoothing: antialiased;
-    color: var(--ink); background: var(--bg);
-    font-size: 15px; line-height: 1.5;
+    font-family: var(--body); color: var(--ink); background: var(--bg);
+    font-size: 15px; line-height: 1.5; -webkit-font-smoothing: antialiased;
+    min-height: 100svh; overflow-x: hidden;
   }
   a { color: inherit; text-decoration: none; }
-  .wrap { width: min(1120px, 100% - 32px); margin: 0 auto; }
 
-  /* ---- Hero: the gameplay plate on the right, shaded into the page like the link card ---- */
-  .hero { position: relative; min-height: 100svh; display: flex; align-items: center; overflow: hidden; isolation: isolate; }
-  /* The plate is portrait, so it only covers the right side: the squad lands
-     beside the title instead of behind it, and the crop stays loose. */
-  .hero .plate {
-    position: absolute; inset: 0 0 0 30%; z-index: -1;
-    background: url(/hero.jpg) no-repeat; background-size: cover; background-position: 50% 58%;
-  }
-  .hero .plate::after {
-    content: ""; position: absolute; inset: 0;
-    background:
-      linear-gradient(90deg, var(--bg) 0%, rgba(11,13,16,.82) 24%, rgba(11,13,16,.3) 52%, rgba(11,13,16,.08) 100%),
-      linear-gradient(180deg, rgba(11,13,16,.4), rgba(11,13,16,0) 28%, rgba(11,13,16,0) 62%, var(--bg) 100%);
-  }
-  .hero .wrap { padding: 96px 0 72px; }
-  .eyebrow { font-size: 12px; font-weight: 600; letter-spacing: .46em; color: var(--sand-dim); text-transform: uppercase; }
-  h1 {
-    margin: 14px 0 0; font-size: clamp(64px, 11vw, 148px); line-height: .9; font-weight: 800;
-    letter-spacing: .01em; text-transform: uppercase; text-shadow: 0 5px 0 rgba(0,0,0,.55);
-  }
-  .rule { height: 3px; width: min(420px, 70%); margin: 28px 0 22px; background: linear-gradient(90deg, var(--sand), var(--sand) 70%, rgba(224,201,160,0)); }
-  .lines { font-size: clamp(14px, 1.6vw, 19px); letter-spacing: .14em; color: var(--sand); line-height: 1.65; text-transform: uppercase; }
-  .lines .tip { color: var(--tip); }
-  .cta { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; margin-top: 40px; }
-  .pill {
-    display: inline-block; padding: 15px 28px 16px; background: var(--sand); color: var(--bg);
-    font-weight: 800; font-size: 15px; letter-spacing: .3em; text-indent: .3em; text-transform: uppercase; white-space: nowrap;
-    clip-path: polygon(0 0, 100% 0, 100% 100%, 14px 100%, 0 calc(100% - 14px));
-    transition: background .15s ease, transform .15s ease;
-  }
-  .pill:hover, .pill:focus-visible { background: #f4e4b8; transform: translateY(-1px); outline: none; }
-  .ghost {
-    display: inline-block; padding: 14px 22px 15px; border: 1px solid rgba(224,201,160,.45); color: var(--sand);
-    font-size: 13px; letter-spacing: .3em; text-indent: .3em; text-transform: uppercase; white-space: nowrap;
-  }
-  .ghost:hover, .ghost:focus-visible { border-color: var(--sand); outline: none; }
+  /* ---- Space backdrop: stars, two nebula glows, a planet limb at the bottom ---- */
+  .space { position: fixed; inset: 0; z-index: -1; overflow: hidden; background:
+      radial-gradient(1200px 700px at 85% -10%, rgba(64, 110, 255, .22), transparent 70%),
+      radial-gradient(900px 600px at 5% 110%, rgba(63, 216, 255, .14), transparent 70%),
+      var(--bg); }
+  .space::before, .space::after { content: ""; position: absolute; inset: 0; pointer-events: none; }
+  .space::before { background-image:
+      radial-gradient(1px 1px at 12% 18%, #fff 50%, transparent 51%), radial-gradient(1px 1px at 28% 72%, #fff 50%, transparent 51%),
+      radial-gradient(1.5px 1.5px at 44% 12%, #dfe9ff 50%, transparent 51%), radial-gradient(1px 1px at 63% 38%, #fff 50%, transparent 51%),
+      radial-gradient(1px 1px at 78% 22%, #fff 50%, transparent 51%), radial-gradient(1.5px 1.5px at 91% 64%, #ffe9d6 50%, transparent 51%),
+      radial-gradient(1px 1px at 6% 52%, #fff 50%, transparent 51%), radial-gradient(1px 1px at 52% 58%, #fff 50%, transparent 51%),
+      radial-gradient(1px 1px at 20% 90%, #cfe0ff 50%, transparent 51%), radial-gradient(1px 1px at 70% 84%, #fff 50%, transparent 51%);
+    background-size: 460px 460px; opacity: .7; }
+  .space::after { bottom: 0; top: auto; height: 38vh; background:
+      linear-gradient(180deg, transparent, rgba(7, 11, 20, .9) 70%),
+      repeating-linear-gradient(90deg, rgba(63, 216, 255, .05) 0 1px, transparent 1px 64px); }
 
-  /* ---- Games: the briefing list from the game's menu, grown into cards ---- */
-  .games { padding: 32px 0 96px; }
-  .section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; border-top: 1px solid var(--rule); padding-top: 22px; margin-bottom: 28px; }
-  .section-head h2 { margin: 0; font-size: 13px; font-weight: 600; letter-spacing: .46em; color: var(--sand-dim); text-transform: uppercase; }
-  .section-head .num { font: 12px ui-monospace, monospace; color: var(--sand-dim); letter-spacing: .1em; }
-  .game {
-    display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 0;
-    background: #10141a; border: 1px solid rgba(224,201,160,.14); overflow: hidden;
-    transition: border-color .15s ease, transform .15s ease;
-  }
-  .game:hover, .game:focus-within { border-color: rgba(224,201,160,.5); transform: translateY(-2px); }
-  .game .shot { position: relative; min-height: 340px; background: #0f1a24 url(/hero.jpg) no-repeat; background-size: cover; background-position: 50% 58%; }
-  .game .shot::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(16,20,26,0) 70%, #10141a 100%); }
-  .game .body { padding: 36px 36px 34px; display: flex; flex-direction: column; justify-content: center; }
-  .game .num { font: 12px ui-monospace, monospace; color: var(--sand-dim); letter-spacing: .1em; }
-  .game h3 { margin: 10px 0 0; font-size: 42px; line-height: 1; font-weight: 800; text-transform: uppercase; letter-spacing: .01em; }
-  .game .sub { margin-top: 8px; font-size: 12px; letter-spacing: .34em; color: var(--sand-dim); text-transform: uppercase; }
-  .game p { margin: 20px 0 0; color: var(--muted); font-size: 15px; line-height: 1.6; max-width: 40ch; }
-  .tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
-  .tag { font-size: 11px; letter-spacing: .18em; text-transform: uppercase; color: var(--sand); border: 1px solid rgba(224,201,160,.4); padding: 5px 10px 6px; }
-  .game .pill { margin-top: 28px; align-self: flex-start; }
-  .next { display: flex; gap: 18px; align-items: baseline; margin-top: 26px; padding-top: 18px; border-top: 1px solid var(--rule); color: var(--muted); font-size: 13px; letter-spacing: .16em; text-transform: uppercase; }
-  .next .num { font: 12px ui-monospace, monospace; color: var(--sand-dim); letter-spacing: .1em; }
+  .wrap { width: min(1360px, 100% - 40px); margin: 0 auto; }
 
-  footer { padding: 0 0 calc(36px + env(safe-area-inset-bottom)); font-size: 12px; letter-spacing: .2em; text-transform: uppercase; color: var(--muted); }
-  footer a { color: var(--sand); border-bottom: 1px solid rgba(224,201,160,.4); }
+  /* ---- Top bar ---- */
+  .top { position: sticky; top: 0; z-index: 5; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    background: linear-gradient(180deg, rgba(7, 11, 20, .85), rgba(7, 11, 20, .35)); border-bottom: 1px solid var(--line); }
+  .top .wrap { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; height: 60px; gap: 16px; }
+  .brand { font-family: var(--head); font-size: 12px; letter-spacing: .28em; text-transform: uppercase; white-space: nowrap; }
+  .brand b { color: var(--cyan); font-weight: 700; }
+  .plate { justify-self: center; padding: 8px 26px 7px; text-align: center; background: var(--panel); border: 1px solid var(--line); border-top: 2px solid var(--red);
+    clip-path: polygon(10px 0, calc(100% - 10px) 0, 100% 100%, 0 100%); font-size: 11px; letter-spacing: .22em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+  .plate b { display: block; color: var(--ink); font-weight: 800; font-size: 13px; letter-spacing: .14em; }
+  .chip { justify-self: end; display: inline-flex; align-items: center; gap: 8px; font-size: 11px; letter-spacing: .2em; text-transform: uppercase; color: var(--cyan); white-space: nowrap; }
+  .chip svg { width: 22px; height: 22px; }
 
-  @media (max-width: 760px) {
-    .hero { min-height: 92svh; align-items: flex-end; }
-    .hero .plate { inset: 0; background-position: 50% 40%; }
-    .hero .plate::after {
-      background:
-        linear-gradient(180deg, rgba(11,13,16,.45), rgba(11,13,16,.1) 25%, rgba(11,13,16,.78) 58%, var(--bg) 92%);
-    }
-    .hero .wrap { padding: 120px 0 36px; }
-    h1 { font-size: clamp(52px, 15.5vw, 84px); }
-    .pill, .ghost { width: 100%; text-align: center; }
-    .game { grid-template-columns: 1fr; }
-    .game .shot { min-height: 0; aspect-ratio: 16 / 10; }
-    .game .shot::after { background: linear-gradient(180deg, rgba(16,20,26,0) 70%, #10141a 100%); }
-    .game .body { padding: 24px 20px 26px; }
-    .game h3 { font-size: 34px; }
+  /* ---- Games deck ---- */
+  main { padding: 36px 0 150px; }
+  h1 { font-family: var(--head); font-weight: 400; font-size: clamp(30px, 4.4vw, 56px); letter-spacing: .22em; text-transform: uppercase; margin: 0 0 22px; color: #dbe6f5; text-shadow: 0 0 30px rgba(63, 216, 255, .25); }
+  .deck { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 22px; }
+  .slot { position: relative; display: block; padding-bottom: 30px; outline: none; }
+  .card { position: relative; aspect-ratio: 2 / 3; overflow: hidden;
+    clip-path: polygon(var(--slant) 0, 100% 0, calc(100% - var(--slant)) 100%, 0 100%);
+    background: #0b1424; transition: transform .2s ease, filter .2s ease; }
+  .card .art { position: absolute; inset: 0; background-size: cover; background-position: 50% 50%; transition: transform .35s ease; }
+  .card .art::after { content: ""; position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(7, 11, 20, .15) 0%, rgba(7, 11, 20, 0) 40%, rgba(7, 11, 20, .55) 100%); }
+  .card .edge { position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(90deg, rgba(255,255,255,.1), transparent 12%, transparent 88%, rgba(255,255,255,.06)); }
+  .card .head { position: absolute; left: 0; right: 0; top: 0; padding: 22px 16px 16px; text-align: center;
+    background: linear-gradient(180deg, rgba(10, 18, 32, .92) 0%, rgba(10, 18, 32, .78) 70%, rgba(10, 18, 32, 0) 100%); }
+  .card .head::after { content: ""; position: absolute; left: 10%; right: 10%; top: 0; height: 2px; background: linear-gradient(90deg, transparent, var(--cyan), transparent); opacity: 0; transition: opacity .2s ease; }
+  .card h2 { margin: 0; font-family: var(--body); font-weight: 800; font-size: clamp(20px, 1.9vw, 28px); line-height: 1.02; letter-spacing: .06em; text-transform: uppercase; color: #fff; text-shadow: 0 2px 6px rgba(0,0,0,.6); }
+  .card h2 small { display: block; font-size: .64em; font-weight: 600; letter-spacing: .14em; color: #c9d6e8; margin-bottom: 3px; }
+  .card .state { margin-top: 8px; font-size: 12px; font-weight: 600; letter-spacing: .3em; text-transform: uppercase; color: var(--cyan); }
+  .card .state.new::before { content: "◆ "; }
+  .card .state.locked { color: var(--red); }
+  .card .vp { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 10px; background: rgba(7, 11, 20, .72); border: 1px solid rgba(63, 216, 255, .35); font-size: 10px; letter-spacing: .18em; text-transform: uppercase; color: var(--cyan); white-space: nowrap; }
+  .card .vp svg { width: 14px; height: 14px; }
+  .tab { position: absolute; left: 50%; bottom: 0; transform: translateX(-50%); z-index: 2; min-width: 58%; padding: 12px 22px; text-align: center;
+    clip-path: polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
+    background: linear-gradient(180deg, #19a9d8, #0b7196); color: #fff; font-weight: 800; font-size: 13px; letter-spacing: .26em; text-transform: uppercase;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, .5); transition: transform .2s ease, background .2s ease; }
+  .slot:hover .card, .slot:focus-visible .card { transform: translateY(-8px); }
+  .slot:hover .art, .slot:focus-visible .art { transform: scale(1.04); }
+  .slot:hover .head::after, .slot:focus-visible .head::after { opacity: 1; }
+  .slot:hover .tab, .slot:focus-visible .tab { transform: translateX(-50%) translateY(-4px); background: linear-gradient(180deg, #3fd8ff, #0e86b3); }
+  .slot.locked .card { filter: saturate(.25) brightness(.55); }
+  .slot.locked .art { background: radial-gradient(600px 300px at 50% 120%, rgba(255, 77, 94, .25), transparent 70%),
+      repeating-linear-gradient(135deg, rgba(255,255,255,.035) 0 2px, transparent 2px 18px), #101a2c; }
+  .slot.locked .tab { background: linear-gradient(180deg, #2a3446, #171f2d); color: var(--red); box-shadow: none; }
+  .slot.locked:hover .card { transform: none; } .slot.locked:hover .tab { transform: translateX(-50%); }
+
+  /* ---- Vision Pro ---- */
+  .vision { margin-top: 70px; display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 36px; align-items: center;
+    padding: 34px 38px; background: var(--panel); border: 1px solid var(--line); clip-path: polygon(0 0, 100% 0, 100% calc(100% - 26px), calc(100% - 26px) 100%, 0 100%); }
+  .vision .mark { display: flex; align-items: center; gap: 18px; }
+  .vision .mark svg { width: 72px; height: 72px; flex: none; color: var(--cyan); filter: drop-shadow(0 0 18px rgba(63, 216, 255, .45)); }
+  .vision h2 { margin: 0; font-family: var(--head); font-weight: 700; font-size: clamp(18px, 2vw, 26px); letter-spacing: .14em; text-transform: uppercase; line-height: 1.25; }
+  .vision h2 small { display: block; font-family: var(--body); font-weight: 600; font-size: 12px; letter-spacing: .3em; color: var(--cyan); margin-bottom: 8px; }
+  .vision p { margin: 0 0 14px; color: var(--muted); font-size: 15px; max-width: 60ch; }
+  .vision ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+  .vision li { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: baseline; font-size: 14px; color: #c9d6e8; }
+  .vision li b { font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: #fff; font-size: 12px; }
+
+  /* ---- Bottom bar ---- */
+  .bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; padding: 10px 0 calc(10px + env(safe-area-inset-bottom));
+    background: linear-gradient(180deg, rgba(7, 11, 20, .55), rgba(7, 11, 20, .96)); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-top: 1px solid var(--line); }
+  .bar .wrap { display: flex; gap: 10px; }
+  .bar a { flex: 1; display: block; padding: 14px 18px; text-align: center; font-weight: 700; font-size: 13px; letter-spacing: .3em; text-transform: uppercase; color: #c9d6e8;
+    background: linear-gradient(180deg, rgba(24, 34, 52, .9), rgba(14, 21, 34, .9)); border: 1px solid var(--line);
+    clip-path: polygon(10px 0, 100% 0, calc(100% - 10px) 100%, 0 100%); position: relative; transition: color .15s ease, background .15s ease; }
+  .bar a::after { content: ""; position: absolute; right: 20px; bottom: 9px; width: 18px; height: 2px; background: var(--red); }
+  .bar a:hover, .bar a:focus-visible { color: #fff; outline: none; }
+  .bar a.on { color: var(--cyan); background: linear-gradient(180deg, rgba(14, 110, 150, .9), rgba(8, 60, 86, .95)); border-color: rgba(63, 216, 255, .45); }
+  .bar a.on::after { background: var(--cyan); }
+  .bar .ext { flex: 0 0 auto; }
+
+  @media (max-width: 1000px) {
+    .deck { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .vision { grid-template-columns: 1fr; gap: 22px; padding: 26px 22px; }
   }
-  @media (prefers-reduced-motion: reduce) { .pill, .game { transition: none; } }
+  @media (max-width: 640px) {
+    .wrap { width: min(1360px, 100% - 32px); }
+    .top .wrap { grid-template-columns: 1fr auto; height: 56px; }
+    .top .plate { display: none; }
+    .chip span { display: none; }
+    main { padding-top: 24px; }
+    .deck { display: flex; gap: 14px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 4px 16px 10px; margin: 0 -16px;
+      scrollbar-width: none; }
+    .deck::-webkit-scrollbar { display: none; }
+    .slot { flex: 0 0 66vw; scroll-snap-align: center; }
+    .card h2 { font-size: 24px; }
+    .bar a { padding: 13px 10px; font-size: 11px; letter-spacing: .2em; }
+    .bar a::after { right: 12px; width: 12px; }
+  }
+  @media (prefers-reduced-motion: reduce) { .card, .art, .tab { transition: none; } }
 </style>
 </head>
 <body>
-<section class="hero">
-  <div class="plate" role="img" aria-label="A winged squad of blue soldiers firing lasers down a desert highway, an escort drone at their side."></div>
+<div class="space" aria-hidden="true"></div>
+
+<header class="top">
   <div class="wrap">
-    <div class="eyebrow">Free browser games</div>
-    <h1>Age of<br>Vibecoders</h1>
-    <div class="rule"></div>
-    <div class="lines">
-      No install — no account<br>
-      <span class="tip">Open one and play</span>
-    </div>
-    <div class="cta">
-      <a class="pill" href="/runner/">Play Squad Runner</a>
-      <a class="ghost" href="#games">All games</a>
-    </div>
+    <a class="brand" href="/">Age of <b>Vibecoders</b></a>
+    <div class="plate">Free to play <b>No install · No account</b></div>
+    <a class="chip" href="#visionpro" aria-label="Apple Vision Pro ready">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 10.5c0-2.5 1.8-4 4.2-4h8.6c2.4 0 4.2 1.5 4.2 4v2.6c0 2.6-1.7 4.4-4.1 4.4-1.6 0-2.6-.8-3.4-1.9-.5-.7-1.5-.7-2 0-.8 1.1-1.8 1.9-3.4 1.9-2.4 0-4.1-1.8-4.1-4.4v-2.6z"/></svg>
+      <span>Apple Vision Pro ready</span>
+    </a>
   </div>
-</section>
+</header>
 
-<section class="games wrap" id="games">
-  <div class="section-head"><h2>Games</h2><span class="num">01 / 01</span></div>
-  <a class="game" href="/runner/">
-    <div class="shot"></div>
-    <div class="body">
-      <div class="num">01</div>
-      <h3>Squad Runner</h3>
-      <div class="sub">Corridor assault</div>
-      <p>Drag to steer, your squad fires itself. Shoot the orbs to grow the crowd, break the barrels, earn your wings and take down the boss.</p>
-      <div class="tags"><span class="tag">Action</span><span class="tag">Mobile &amp; desktop</span><span class="tag">2-minute runs</span></div>
-      <span class="pill">Deploy squad →</span>
+<main class="wrap">
+  <section id="games">
+    <h1>Games</h1>
+    <div class="deck">
+      <a class="slot" href="/runner/">
+        <div class="card">
+          <div class="art" style="background-image: url(/hero.jpg); background-position: 50% 42%"></div>
+          <div class="edge"></div>
+          <div class="head"><h2><small>Corridor assault</small>Squad Runner</h2><div class="state">Play now</div></div>
+          <div class="vp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 10.5c0-2.5 1.8-4 4.2-4h8.6c2.4 0 4.2 1.5 4.2 4v2.6c0 2.6-1.7 4.4-4.1 4.4-1.6 0-2.6-.8-3.4-1.9-.5-.7-1.5-.7-2 0-.8 1.1-1.8 1.9-3.4 1.9-2.4 0-4.1-1.8-4.1-4.4v-2.6z"/></svg>Vision Pro</div>
+        </div>
+        <span class="tab">Play</span>
+      </a>
+      <a class="slot" href="/ascent/">
+        <div class="card">
+          <div class="art" style="background-image: url(/ascent-hero.jpg); background-position: 50% 50%"></div>
+          <div class="edge"></div>
+          <div class="head"><h2><small>Loft to orbit</small>Ascent</h2><div class="state new">New</div></div>
+          <div class="vp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 10.5c0-2.5 1.8-4 4.2-4h8.6c2.4 0 4.2 1.5 4.2 4v2.6c0 2.6-1.7 4.4-4.1 4.4-1.6 0-2.6-.8-3.4-1.9-.5-.7-1.5-.7-2 0-.8 1.1-1.8 1.9-3.4 1.9-2.4 0-4.1-1.8-4.1-4.4v-2.6z"/></svg>Vision Pro</div>
+        </div>
+        <span class="tab">Play</span>
+      </a>
+      <div class="slot locked" aria-label="Third game, coming soon">
+        <div class="card">
+          <div class="art"></div>
+          <div class="edge"></div>
+          <div class="head"><h2><small>Slot 03</small>Classified</h2><div class="state locked">Locked</div></div>
+        </div>
+        <span class="tab">Coming soon</span>
+      </div>
+      <div class="slot locked" aria-label="Fourth game, coming soon">
+        <div class="card">
+          <div class="art"></div>
+          <div class="edge"></div>
+          <div class="head"><h2><small>Slot 04</small>Classified</h2><div class="state locked">Locked</div></div>
+        </div>
+        <span class="tab">Coming soon</span>
+      </div>
     </div>
-  </a>
-  <div class="next"><span class="num">02</span><span>Next game — in the works</span></div>
-</section>
+  </section>
 
-<footer class="wrap">Open source on <a href="https://github.com/Rassl/age-of-vibecoders">GitHub</a></footer>
+  <section class="vision" id="visionpro">
+    <div class="mark">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 10.5c0-2.5 1.8-4 4.2-4h8.6c2.4 0 4.2 1.5 4.2 4v2.6c0 2.6-1.7 4.4-4.1 4.4-1.6 0-2.6-.8-3.4-1.9-.5-.7-1.5-.7-2 0-.8 1.1-1.8 1.9-3.4 1.9-2.4 0-4.1-1.8-4.1-4.4v-2.6z"/><path d="M7.5 4.5h9"/></svg>
+      <h2><small>Immersive · WebXR</small>Plays on Apple Vision Pro</h2>
+    </div>
+    <div>
+      <p>Both games run in Safari on visionOS. Open the page, choose <b>Immersive</b>, and the game leaves the window: look to aim, pinch to act. No App Store, nothing to install. The same pages play flat on a phone or a laptop.</p>
+      <ul>
+        <li><b>Squad Runner</b><span>Stand on the road behind your squad; a pinch-drag steers the whole crowd.</span></li>
+        <li><b>Ascent</b><span>Look up and the ceiling opens. Lift off from a loft, over your own city, out to orbit.</span></li>
+      </ul>
+    </div>
+  </section>
+</main>
+
+<nav class="bar" aria-label="Sections">
+  <div class="wrap">
+    <a class="on" href="#games">Games</a>
+    <a href="#visionpro">Vision Pro</a>
+    <a class="ext" href="https://github.com/Rassl/age-of-vibecoders" rel="noopener">GitHub</a>
+  </div>
+</nav>
 </body>
 </html>

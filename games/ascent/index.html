@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Ascent — fly from your room to orbit on Apple Vision Pro</title>
+  <meta name="description" content="Rise out of a quiet loft, through your own city, all the way to orbit. A free WebXR flight for Apple Vision Pro that also plays in a browser window. No install, no account." />
+  <meta name="keywords" content="Apple Vision Pro game, visionOS WebXR, immersive flight, browser game, space flight, satellite imagery, Ascent" />
+  <meta name="theme-color" content="#04060c" />
+  <link rel="canonical" href="https://www.ageofvibecoders.com/ascent/" />
+  <!-- Link previews: og:image must be absolute. The card is public/og.png, 1200x630. -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Age of Vibecoders" />
+  <meta property="og:title" content="Ascent — from your room to orbit" />
+  <meta property="og:description" content="Look up, the ceiling opens. Lift off from a loft, over your city, out to orbit. Immersive on Apple Vision Pro, free in the browser." />
+  <meta property="og:url" content="https://www.ageofvibecoders.com/ascent/" />
+  <meta property="og:image" content="https://www.ageofvibecoders.com/ascent/og.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="Earth seen from orbit against the Milky Way." />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>🚀</text></svg>" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "VideoGame",
+    "name": "Ascent",
+    "url": "https://www.ageofvibecoders.com/ascent/",
+    "image": "https://www.ageofvibecoders.com/ascent/og.png",
+    "description": "Rise out of a quiet loft, through your city, all the way to orbit. Built for Apple Vision Pro in WebXR; also plays in a window.",
+    "genre": "Flight",
+    "playMode": "SinglePlayer",
+    "applicationCategory": "Game",
+    "operatingSystem": "Web browser, visionOS",
+    "gamePlatform": ["Apple Vision Pro", "Web browser"],
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+    "isPartOf": { "@type": "WebSite", "name": "Age of Vibecoders", "url": "https://www.ageofvibecoders.com/" }
+  }
+  </script>
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body>
+  <canvas id="view"></canvas>
+  <main id="launch">
+    <div class="stars" aria-hidden="true"></div>
+    <div class="planet" aria-hidden="true"></div>
+    <section class="card">
+      <header class="hero">
+        <div class="badge"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2c3 2.2 4.6 5.6 4.6 9.6 0 1.6-.3 3.1-.8 4.4H8.2c-.5-1.3-.8-2.8-.8-4.4C7.4 7.6 9 4.2 12 2z" fill="currentColor"/><circle cx="12" cy="10" r="1.8" fill="#0b1830"/><path d="M8 13.5l-2.6 2.6.4 3.2L8.6 17M16 13.5l2.6 2.6-.4 3.2L15.4 17" fill="currentColor" opacity=".75"/><path d="M10 17.5h4l-2 4.5z" fill="#ffb35a"/></svg></div>
+        <h1>Ascent</h1>
+        <p class="sub">Rise out of a quiet loft, through your city, all the way to orbit.</p>
+      </header>
+
+      <ol class="steps">
+        <li><span class="ico">1</span><span><b>Look up</b>A portal opens in the ceiling.</span></li>
+        <li><span class="ico">2</span><span><b>Lift off</b>Engines roar, the city falls away.</span></li>
+        <li><span class="ico">3</span><span><b>Fly</b>Steer from your console, out to space.</span></li>
+      </ol>
+
+      <h2>Start from</h2>
+      <select id="start" hidden></select>
+      <div id="places" class="places" role="radiogroup" aria-label="Start from"></div>
+      <p id="where" class="note" hidden></p>
+
+      <div class="launchrow">
+        <div class="mode" role="radiogroup" aria-label="View">
+          <button id="modeVR" role="radio" aria-checked="true">Immersive</button>
+          <button id="modeFlat" role="radio" aria-checked="false">In a window</button>
+        </div>
+        <button id="enter" class="primary" disabled>Checking for VR…</button>
+      </div>
+      <p id="xrdiag" class="diag" hidden></p>
+
+      <details>
+        <summary>Flight options</summary>
+        <label>Speed <output id="speedOut">1.0×</output>
+          <input id="speed" type="range" min="0.3" max="4" step="0.1" value="1" />
+        </label>
+        <p id="status" class="status"></p>
+      </details>
+      <p class="credits">Imagery © Esri, Maxar, Earthstar Geographics · Buildings © OpenStreetMap contributors · Places © Wikipedia, Wikidata · Sky and textures © Poly Haven (CC0) · Earth © NASA</p>
+    </section>
+  </main>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

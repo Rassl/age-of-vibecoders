@@ -17,10 +17,21 @@ dependency (three 0.185.1), no TypeScript.
 Needs **Node ≥ 20.19** (or ≥ 22.12) — Vite 8 declares that in `engines` and refuses
 to start on older 20.x.
 
-The deployed site is a HUB: `site/index.html` is the landing page at `/`, and this
-game is served under `/runner/` (Vite `base`), so further games can sit beside it --
-in this repo as more entries, or as separate deployments routed in with a Vercel
-rewrite. `npm run dev` serves both: the hub at `/` and the game at `/runner/`.
+The deployed site is a HUB: `site/index.html` is the landing page at `/`, this game
+is served under `/runner/` (Vite `base`), and further games sit beside it under
+`games/` -- each its own package with its own `vite.config.js`, building into
+`dist/<name>/`. `npm run build` builds every game and copies `site/` on top.
+`npm run dev` serves the hub at `/` and this game at `/runner/`; a game under
+`games/` runs its own dev server (`cd games/ascent && npm i && npm run dev`).
+
+| Path       | Game         | Source          |
+|------------|--------------|-----------------|
+| `/runner/` | Squad Runner | this repo root  |
+| `/ascent/` | Ascent       | `games/ascent/` -- a WebXR flight from a loft to orbit, built for Apple Vision Pro (three 0.170, Vite 6) |
+
+Both games expose an immersive WebXR session, so they play on Apple Vision Pro in
+Safari; the hub's landing page and each game's `<head>` carry that in their
+descriptions and structured data for search.
 
 ```bash
 npm install

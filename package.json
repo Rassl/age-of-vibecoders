@@ -8,7 +8,8 @@
   "scripts": {
     "dev": "vite",
     "dev:https": "HTTPS=1 vite",
-    "build": "vite build && node -e \"require('node:fs').cpSync('site', 'dist', { recursive: true })\"",
+    "build": "vite build && npm run build:ascent && node -e \"require('node:fs').cpSync('site', 'dist', { recursive: true })\"",
+    "build:ascent": "npm --prefix games/ascent ci --no-audit --no-fund && npm --prefix games/ascent run build",
     "preview": "vite preview"
   },
   "dependencies": {

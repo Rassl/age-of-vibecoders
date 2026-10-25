@@ -12,7 +12,7 @@ const b = await chromium.launch({
   headless: true, args: CHROME_ARGS,
 })
 const p = await b.newPage({ viewport: { width: 430, height: 900 }, deviceScaleFactor: 2 })
-await p.goto(process.env.GAME_URL || 'http://localhost:5180/', { waitUntil: 'load' })
+await p.goto(process.env.GAME_URL || 'http://localhost:5180/runner/', { waitUntil: 'load' })
 await p.waitForTimeout(1500)
 await p.mouse.click(215, 450)
 await p.waitForTimeout(1200)

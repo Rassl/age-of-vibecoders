@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#0b0d10" />
+<title>Age of Vibecoders</title>
+<meta name="description" content="Small browser games, free to play. No install, no account." />
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="Age of Vibecoders" />
+<meta property="og:title" content="Age of Vibecoders" />
+<meta property="og:description" content="Small browser games, free to play. No install, no account." />
+<meta property="og:url" content="https://www.ageofvibecoders.com/" />
+<meta property="og:image" content="https://www.ageofvibecoders.com/runner/og.png" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta name="twitter:card" content="summary_large_image" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>🎮</text></svg>" />
+<style>
+  :root {
+    --bg: #0b0d10; --panel: #11161c; --line: #1c2430; --text: #e6ecf2; --muted: #8b98a8;
+    --blue: #2f7fd8; --blue-hi: #62b4ff; --red: #c0392b;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; min-height: 100%; }
+  body {
+    font: 16px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color: var(--text);
+    background: radial-gradient(ellipse at 50% 0%, #1b2a36 0%, #10191f 45%, var(--bg) 100%) fixed;
+    padding: 0 16px calc(32px + env(safe-area-inset-bottom));
+  }
+  header { max-width: 980px; margin: 0 auto; padding: 56px 0 28px; }
+  h1 {
+    margin: 0; font-size: clamp(32px, 6vw, 52px); line-height: 1.05; letter-spacing: -0.02em;
+    font-weight: 800;
+  }
+  h1 span { color: var(--blue-hi); }
+  header p { margin: 12px 0 0; color: var(--muted); font-size: clamp(16px, 2.2vw, 19px); max-width: 52ch; }
+  main { max-width: 980px; margin: 0 auto; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+  .card {
+    display: block; color: inherit; text-decoration: none;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 16px; overflow: hidden;
+    transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease;
+  }
+  .card:hover, .card:focus-visible {
+    transform: translateY(-2px); border-color: var(--blue);
+    box-shadow: 0 16px 48px rgba(0, 0, 0, .45), 0 0 0 1px var(--blue);
+    outline: none;
+  }
+  .card img { display: block; width: 100%; aspect-ratio: 1200 / 630; object-fit: cover; background: #0f1a24; }
+  .card .body { padding: 16px 18px 18px; }
+  .card h2 { margin: 0 0 6px; font-size: 20px; }
+  .card p { margin: 0 0 14px; color: var(--muted); font-size: 15px; }
+  .tags { display: flex; flex-wrap: wrap; gap: 6px; }
+  .tag {
+    font-size: 12px; letter-spacing: .04em; text-transform: uppercase; color: var(--blue-hi);
+    border: 1px solid #234a6e; border-radius: 999px; padding: 3px 9px;
+  }
+  .play {
+    display: inline-block; margin-top: 14px; padding: 10px 18px; border-radius: 10px;
+    background: var(--blue); color: #fff; font-weight: 700; letter-spacing: .02em;
+  }
+  .card:hover .play { background: var(--blue-hi); color: #06121c; }
+  .soon {
+    border-style: dashed; display: flex; align-items: center; justify-content: center;
+    min-height: 220px; color: var(--muted); text-align: center; padding: 24px;
+  }
+  footer { max-width: 980px; margin: 48px auto 0; color: var(--muted); font-size: 14px; }
+  footer a { color: var(--blue-hi); }
+  @media (prefers-reduced-motion: reduce) { .card { transition: none; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Age of <span>Vibecoders</span></h1>
+  <p>Small browser games, free to play. No install, no account — open one and go.</p>
+</header>
+<main>
+  <div class="grid">
+    <a class="card" href="/runner/">
+      <img src="/runner/og.png" alt="A winged squad of blue soldiers flying over a desert highway, firing down the corridor." width="1200" height="630" />
+      <div class="body">
+        <h2>Squad Runner</h2>
+        <p>Drag to steer, your squad fires itself. Shoot the orbs, grow the crowd, earn your wings.</p>
+        <div class="tags"><span class="tag">Action</span><span class="tag">Mobile &amp; desktop</span><span class="tag">2 min runs</span></div>
+        <span class="play">Play</span>
+      </div>
+    </a>
+    <div class="card soon">More games coming.</div>
+  </div>
+</main>
+<footer>
+  Open source on <a href="https://github.com/Rassl/age-of-vibecoders">GitHub</a>.
+</footer>
+</body>
+</html>

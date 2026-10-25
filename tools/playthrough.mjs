@@ -11,7 +11,7 @@ import { chromium } from 'playwright-core'
 import { findChrome, CHROME_ARGS, shotDir } from './chrome.mjs'
 
 const SHOTS = shotDir()
-const URL = process.env.GAME_URL || 'http://localhost:5180/'
+const URL = process.env.GAME_URL || 'http://localhost:5180/runner/'
 const AIM = Number(process.env.AIM || 0.85)
 
 const browser = await chromium.launch({

@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "vite",
     "dev:https": "HTTPS=1 vite",
-    "build": "vite build",
+    "build": "vite build && node -e \"require('node:fs').cpSync('site', 'dist', { recursive: true })\"",
     "preview": "vite preview"
   },
   "dependencies": {

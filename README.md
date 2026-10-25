@@ -17,10 +17,15 @@ dependency (three 0.185.1), no TypeScript.
 Needs **Node ≥ 20.19** (or ≥ 22.12) — Vite 8 declares that in `engines` and refuses
 to start on older 20.x.
 
+The deployed site is a HUB: `site/index.html` is the landing page at `/`, and this
+game is served under `/runner/` (Vite `base`), so further games can sit beside it --
+in this repo as more entries, or as separate deployments routed in with a Vercel
+rewrite. `npm run dev` serves both: the hub at `/` and the game at `/runner/`.
+
 ```bash
 npm install
-npm run dev        # then open the printed URL
-npm run build      # static bundle in dist/ -- base is './', so it deploys anywhere
+npm run dev        # then open the printed URL (the game is at /runner/)
+npm run build      # dist/ = the hub page (site/) + the game under dist/runner/
 ```
 
 **Controls:** drag left/right — mouse or touch. `A`/`D` or arrow keys also work.

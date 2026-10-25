@@ -5,95 +5,155 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#0b0d10" />
 <title>Age of Vibecoders</title>
-<meta name="description" content="Small browser games, free to play. No install, no account." />
+<meta name="description" content="Free browser games. No install, no account — open one and play." />
 <meta property="og:type" content="website" />
 <meta property="og:site_name" content="Age of Vibecoders" />
 <meta property="og:title" content="Age of Vibecoders" />
-<meta property="og:description" content="Small browser games, free to play. No install, no account." />
+<meta property="og:description" content="Free browser games. No install, no account — open one and play." />
 <meta property="og:url" content="https://www.ageofvibecoders.com/" />
 <meta property="og:image" content="https://www.ageofvibecoders.com/runner/og.png" />
 <meta property="og:image:width" content="1200" />
 <meta property="og:image:height" content="630" />
 <meta name="twitter:card" content="summary_large_image" />
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>🎮</text></svg>" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<!-- Same stack as the game's menu; Oswald covers platforms without Bahnschrift / DIN Alternate. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;700&display=swap" />
 <style>
   :root {
-    --bg: #0b0d10; --panel: #11161c; --line: #1c2430; --text: #e6ecf2; --muted: #8b98a8;
-    --blue: #2f7fd8; --blue-hi: #62b4ff; --red: #c0392b;
+    --bg: #0b0d10; --ink: #f4f1ea; --sand: #e0c9a0; --sand-dim: #c2a878; --tip: #cff6ff;
+    --muted: #a9b2b8; --rule: rgba(224, 201, 160, .22);
   }
   * { box-sizing: border-box; }
   html { background: var(--bg); }
-  html, body { margin: 0; min-height: 100%; }
+  html, body { margin: 0; }
   body {
-    font: 16px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    color: var(--text);
-    background: radial-gradient(ellipse at 50% 0%, #1b2a36 0%, #10191f 45%, var(--bg) 100%) fixed;
-    padding: 0 16px calc(32px + env(safe-area-inset-bottom));
+    font-family: "Bahnschrift", "DIN Alternate", "Oswald", system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    color: var(--ink); background: var(--bg);
+    font-size: 15px; line-height: 1.5;
   }
-  header { max-width: 980px; margin: 0 auto; padding: 56px 0 28px; }
+  a { color: inherit; text-decoration: none; }
+  .wrap { width: min(1120px, 100% - 32px); margin: 0 auto; }
+
+  /* ---- Hero: the gameplay plate on the right, shaded into the page like the link card ---- */
+  .hero { position: relative; min-height: 100svh; display: flex; align-items: center; overflow: hidden; isolation: isolate; }
+  /* The plate is portrait, so it only covers the right side: the squad lands
+     beside the title instead of behind it, and the crop stays loose. */
+  .hero .plate {
+    position: absolute; inset: 0 0 0 30%; z-index: -1;
+    background: url(/hero.jpg) no-repeat; background-size: cover; background-position: 50% 58%;
+  }
+  .hero .plate::after {
+    content: ""; position: absolute; inset: 0;
+    background:
+      linear-gradient(90deg, var(--bg) 0%, rgba(11,13,16,.82) 24%, rgba(11,13,16,.3) 52%, rgba(11,13,16,.08) 100%),
+      linear-gradient(180deg, rgba(11,13,16,.4), rgba(11,13,16,0) 28%, rgba(11,13,16,0) 62%, var(--bg) 100%);
+  }
+  .hero .wrap { padding: 96px 0 72px; }
+  .eyebrow { font-size: 12px; font-weight: 600; letter-spacing: .46em; color: var(--sand-dim); text-transform: uppercase; }
   h1 {
-    margin: 0; font-size: clamp(32px, 6vw, 52px); line-height: 1.05; letter-spacing: -0.02em;
-    font-weight: 800;
+    margin: 14px 0 0; font-size: clamp(64px, 11vw, 148px); line-height: .9; font-weight: 800;
+    letter-spacing: .01em; text-transform: uppercase; text-shadow: 0 5px 0 rgba(0,0,0,.55);
   }
-  h1 span { color: var(--blue-hi); }
-  header p { margin: 12px 0 0; color: var(--muted); font-size: clamp(16px, 2.2vw, 19px); max-width: 52ch; }
-  main { max-width: 980px; margin: 0 auto; }
-  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
-  .card {
-    display: block; color: inherit; text-decoration: none;
-    background: var(--panel); border: 1px solid var(--line); border-radius: 16px; overflow: hidden;
-    transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease;
+  .rule { height: 3px; width: min(420px, 70%); margin: 28px 0 22px; background: linear-gradient(90deg, var(--sand), var(--sand) 70%, rgba(224,201,160,0)); }
+  .lines { font-size: clamp(14px, 1.6vw, 19px); letter-spacing: .14em; color: var(--sand); line-height: 1.65; text-transform: uppercase; }
+  .lines .tip { color: var(--tip); }
+  .cta { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; margin-top: 40px; }
+  .pill {
+    display: inline-block; padding: 15px 28px 16px; background: var(--sand); color: var(--bg);
+    font-weight: 800; font-size: 15px; letter-spacing: .3em; text-indent: .3em; text-transform: uppercase; white-space: nowrap;
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 14px 100%, 0 calc(100% - 14px));
+    transition: background .15s ease, transform .15s ease;
   }
-  .card:hover, .card:focus-visible {
-    transform: translateY(-2px); border-color: var(--blue);
-    box-shadow: 0 16px 48px rgba(0, 0, 0, .45), 0 0 0 1px var(--blue);
-    outline: none;
+  .pill:hover, .pill:focus-visible { background: #f4e4b8; transform: translateY(-1px); outline: none; }
+  .ghost {
+    display: inline-block; padding: 14px 22px 15px; border: 1px solid rgba(224,201,160,.45); color: var(--sand);
+    font-size: 13px; letter-spacing: .3em; text-indent: .3em; text-transform: uppercase; white-space: nowrap;
   }
-  /* height:auto, or the height attribute wins and the banner squeezes into a 630px tall strip */
-  .card img { display: block; width: 100%; height: auto; aspect-ratio: 1200 / 630; object-fit: cover; background: #0f1a24; }
-  .card .body { padding: 16px 18px 18px; }
-  .card h2 { margin: 0 0 6px; font-size: 20px; }
-  .card p { margin: 0 0 14px; color: var(--muted); font-size: 15px; }
-  .tags { display: flex; flex-wrap: wrap; gap: 6px; }
-  .tag {
-    font-size: 12px; letter-spacing: .04em; text-transform: uppercase; color: var(--blue-hi);
-    border: 1px solid #234a6e; border-radius: 999px; padding: 3px 9px;
+  .ghost:hover, .ghost:focus-visible { border-color: var(--sand); outline: none; }
+
+  /* ---- Games: the briefing list from the game's menu, grown into cards ---- */
+  .games { padding: 32px 0 96px; }
+  .section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; border-top: 1px solid var(--rule); padding-top: 22px; margin-bottom: 28px; }
+  .section-head h2 { margin: 0; font-size: 13px; font-weight: 600; letter-spacing: .46em; color: var(--sand-dim); text-transform: uppercase; }
+  .section-head .num { font: 12px ui-monospace, monospace; color: var(--sand-dim); letter-spacing: .1em; }
+  .game {
+    display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 0;
+    background: #10141a; border: 1px solid rgba(224,201,160,.14); overflow: hidden;
+    transition: border-color .15s ease, transform .15s ease;
   }
-  .play {
-    display: inline-block; margin-top: 14px; padding: 10px 18px; border-radius: 10px;
-    background: var(--blue); color: #fff; font-weight: 700; letter-spacing: .02em;
+  .game:hover, .game:focus-within { border-color: rgba(224,201,160,.5); transform: translateY(-2px); }
+  .game .shot { position: relative; min-height: 340px; background: #0f1a24 url(/hero.jpg) no-repeat; background-size: cover; background-position: 50% 58%; }
+  .game .shot::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(16,20,26,0) 70%, #10141a 100%); }
+  .game .body { padding: 36px 36px 34px; display: flex; flex-direction: column; justify-content: center; }
+  .game .num { font: 12px ui-monospace, monospace; color: var(--sand-dim); letter-spacing: .1em; }
+  .game h3 { margin: 10px 0 0; font-size: 42px; line-height: 1; font-weight: 800; text-transform: uppercase; letter-spacing: .01em; }
+  .game .sub { margin-top: 8px; font-size: 12px; letter-spacing: .34em; color: var(--sand-dim); text-transform: uppercase; }
+  .game p { margin: 20px 0 0; color: var(--muted); font-size: 15px; line-height: 1.6; max-width: 40ch; }
+  .tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
+  .tag { font-size: 11px; letter-spacing: .18em; text-transform: uppercase; color: var(--sand); border: 1px solid rgba(224,201,160,.4); padding: 5px 10px 6px; }
+  .game .pill { margin-top: 28px; align-self: flex-start; }
+  .next { display: flex; gap: 18px; align-items: baseline; margin-top: 26px; padding-top: 18px; border-top: 1px solid var(--rule); color: var(--muted); font-size: 13px; letter-spacing: .16em; text-transform: uppercase; }
+  .next .num { font: 12px ui-monospace, monospace; color: var(--sand-dim); letter-spacing: .1em; }
+
+  footer { padding: 0 0 calc(36px + env(safe-area-inset-bottom)); font-size: 12px; letter-spacing: .2em; text-transform: uppercase; color: var(--muted); }
+  footer a { color: var(--sand); border-bottom: 1px solid rgba(224,201,160,.4); }
+
+  @media (max-width: 760px) {
+    .hero { min-height: 92svh; align-items: flex-end; }
+    .hero .plate { inset: 0; background-position: 50% 40%; }
+    .hero .plate::after {
+      background:
+        linear-gradient(180deg, rgba(11,13,16,.45), rgba(11,13,16,.1) 25%, rgba(11,13,16,.78) 58%, var(--bg) 92%);
+    }
+    .hero .wrap { padding: 120px 0 36px; }
+    h1 { font-size: clamp(52px, 15.5vw, 84px); }
+    .pill, .ghost { width: 100%; text-align: center; }
+    .game { grid-template-columns: 1fr; }
+    .game .shot { min-height: 0; aspect-ratio: 16 / 10; }
+    .game .shot::after { background: linear-gradient(180deg, rgba(16,20,26,0) 70%, #10141a 100%); }
+    .game .body { padding: 24px 20px 26px; }
+    .game h3 { font-size: 34px; }
   }
-  .card:hover .play { background: var(--blue-hi); color: #06121c; }
-  .soon {
-    border-style: dashed; display: flex; align-items: center; justify-content: center;
-    min-height: 220px; color: var(--muted); text-align: center; padding: 24px;
-  }
-  footer { max-width: 980px; margin: 48px auto 0; color: var(--muted); font-size: 14px; }
-  footer a { color: var(--blue-hi); }
-  @media (prefers-reduced-motion: reduce) { .card { transition: none; } }
+  @media (prefers-reduced-motion: reduce) { .pill, .game { transition: none; } }
 </style>
 </head>
 <body>
-<header>
-  <h1>Age of <span>Vibecoders</span></h1>
-  <p>Small browser games, free to play. No install, no account — open one and go.</p>
-</header>
-<main>
-  <div class="grid">
-    <a class="card" href="/runner/">
-      <img src="/runner/og.png" alt="A winged squad of blue soldiers flying over a desert highway, firing down the corridor." width="1200" height="630" />
-      <div class="body">
-        <h2>Squad Runner</h2>
-        <p>Drag to steer, your squad fires itself. Shoot the orbs, grow the crowd, earn your wings.</p>
-        <div class="tags"><span class="tag">Action</span><span class="tag">Mobile &amp; desktop</span><span class="tag">2 min runs</span></div>
-        <span class="play">Play</span>
-      </div>
-    </a>
-    <div class="card soon">More games coming.</div>
+<section class="hero">
+  <div class="plate" role="img" aria-label="A winged squad of blue soldiers firing lasers down a desert highway, an escort drone at their side."></div>
+  <div class="wrap">
+    <div class="eyebrow">Free browser games</div>
+    <h1>Age of<br>Vibecoders</h1>
+    <div class="rule"></div>
+    <div class="lines">
+      No install — no account<br>
+      <span class="tip">Open one and play</span>
+    </div>
+    <div class="cta">
+      <a class="pill" href="/runner/">Play Squad Runner</a>
+      <a class="ghost" href="#games">All games</a>
+    </div>
   </div>
-</main>
-<footer>
-  Open source on <a href="https://github.com/Rassl/age-of-vibecoders">GitHub</a>.
-</footer>
+</section>
+
+<section class="games wrap" id="games">
+  <div class="section-head"><h2>Games</h2><span class="num">01 / 01</span></div>
+  <a class="game" href="/runner/">
+    <div class="shot"></div>
+    <div class="body">
+      <div class="num">01</div>
+      <h3>Squad Runner</h3>
+      <div class="sub">Corridor assault</div>
+      <p>Drag to steer, your squad fires itself. Shoot the orbs to grow the crowd, break the barrels, earn your wings and take down the boss.</p>
+      <div class="tags"><span class="tag">Action</span><span class="tag">Mobile &amp; desktop</span><span class="tag">2-minute runs</span></div>
+      <span class="pill">Deploy squad →</span>
+    </div>
+  </a>
+  <div class="next"><span class="num">02</span><span>Next game — in the works</span></div>
+</section>
+
+<footer class="wrap">Open source on <a href="https://github.com/Rassl/age-of-vibecoders">GitHub</a></footer>
 </body>
 </html>

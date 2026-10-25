@@ -19,11 +19,15 @@ const SITE_DIR = 'site'
 const hubPlugin = {
   name: 'aov-hub',
   configureServer(server) {
+    // Serve the hub's own files (page, hero image) the way the static deploy
+    // does: anything under site/ answers at the root, the game owns /runner/.
+    const TYPES = { html: 'text/html; charset=utf-8', jpg: 'image/jpeg', png: 'image/png', svg: 'image/svg+xml', css: 'text/css', js: 'text/javascript' }
     server.middlewares.use((req, res, next) => {
       const path = req.url.split('?')[0]
-      if (path !== '/' && path !== '/index.html') return next()
-      res.setHeader('Content-Type', 'text/html; charset=utf-8')
-      res.end(readFileSync(`${SITE_DIR}/index.html`))
+      const file = path === '/' ? 'index.html' : path.slice(1)
+      if (file.includes('..') || !existsSync(`${SITE_DIR}/${file}`)) return next()
+      res.setHeader('Content-Type', TYPES[file.split('.').pop()] || 'application/octet-stream')
+      res.end(readFileSync(`${SITE_DIR}/${file}`))
     })
   },
 }

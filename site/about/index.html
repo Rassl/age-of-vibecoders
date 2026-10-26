@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#070b14" />
+<title>About Age of Vibecoders — free browser games for Apple Vision Pro</title>
+<meta name="description" content="Who makes Age of Vibecoders, how its free three.js games run in a browser and in immersive WebXR on Apple Vision Pro, and how to play them." />
+<link rel="canonical" href="https://www.ageofvibecoders.com/about/" />
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="Age of Vibecoders" />
+<meta property="og:title" content="About Age of Vibecoders" />
+<meta property="og:description" content="Free 3D browser games, immersive on Apple Vision Pro, built with three.js by one developer." />
+<meta property="og:url" content="https://www.ageofvibecoders.com/about/" />
+<meta property="og:image" content="https://www.ageofvibecoders.com/runner/og.png" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>🎮</text></svg>" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=Exo+2:wght@400;600;800&display=swap" />
+<link rel="stylesheet" href="/page.css" />
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "AboutPage",
+  "name": "About Age of Vibecoders",
+  "url": "https://www.ageofvibecoders.com/about/",
+  "about": { "@type": "Organization", "@id": "https://www.ageofvibecoders.com/#org" },
+  "mainEntity": {
+    "@type": "FAQPage",
+    "mainEntity": [
+      { "@type": "Question", "name": "What is Age of Vibecoders?",
+        "acceptedAnswer": { "@type": "Answer", "text": "A small, independent collection of free 3D games that run in the browser. Each game is a static web page built with three.js; nothing to install and no account." } },
+      { "@type": "Question", "name": "Do the games work on Apple Vision Pro?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Yes. Open a game in Safari on visionOS and choose Immersive. The page starts a WebXR immersive-vr session, so the game fills the room and is steered by looking and pinching. The same pages play flat on a phone or laptop." } },
+      { "@type": "Question", "name": "How much do the games cost?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Nothing. There are no purchases, subscriptions or ads." } },
+      { "@type": "Question", "name": "Who makes it?",
+        "acceptedAnswer": { "@type": "Answer", "text": "One developer, Rasul (Rassl on GitHub). The source code is public." } }
+    ]
+  }
+}
+</script>
+</head>
+<body>
+<div class="space" aria-hidden="true"></div>
+<header class="top"><div class="wrap"><a class="brand" href="/">Age of <b>Vibecoders</b></a><a class="back" href="/">← Games</a></div></header>
+
+<main class="wrap">
+  <h1>About</h1>
+  <p class="lede">Free 3D games that run in the browser and, on Apple Vision Pro, around you. Made by one developer, open source.</p>
+
+  <h2>What this is</h2>
+  <p>Age of Vibecoders is a small collection of games that need nothing but a web page. There is no install, no account, no payment and no advertising. Each game is a static site built with <a href="https://threejs.org/" rel="noopener">three.js</a> and vanilla JavaScript, so it loads in a few seconds and runs on a phone, a laptop or a headset.</p>
+
+  <h2>Apple Vision Pro</h2>
+  <p>Every game here exposes an immersive WebXR session. Open the page in Safari on visionOS, choose <b>Immersive</b>, and the game leaves the window: your head is the camera, and you act by looking at something and pinching. Nothing is downloaded from the App Store.</p>
+  <ul>
+    <li><b>Squad Runner</b> — you stand on the road behind your squad; a pinch-drag moves the whole crowd across the lanes.</li>
+    <li><b>Ascent</b> — you start in a loft. Look up and the ceiling opens; you lift off over real satellite imagery of a city of your choice (or your own location), climb past the ISS altitude and park in geostationary orbit, with landmarks labelled along the way.</li>
+  </ul>
+  <p>If Safari reports that immersive VR is not supported, enable <i>WebXR Device API</i> under Settings → Apps → Safari → Advanced → Feature Flags.</p>
+
+  <h2>The games</h2>
+  <dl>
+    <dt>Squad Runner</dt><dd>An action lane-runner shooter. Drag to steer; the squad fires by itself. Shoot the orbs to grow the crowd, break the barrels, earn your wings and take down the boss. Runs last about two minutes. <a href="/runner/">Play</a></dd>
+    <dt>Ascent</dt><dd>A flight from a quiet loft, through your city, to orbit. Imagery from Esri and Maxar, buildings from OpenStreetMap, landmarks from Wikipedia and Wikidata, sky and Earth textures from Poly Haven and NASA. <a href="/ascent/">Play</a></dd>
+  </dl>
+
+  <h2>Technology</h2>
+  <p>three.js on WebGL, WebXR for the immersive mode, ES modules bundled with Vite, hosted as static files. Squad Runner generates its world and most of its assets procedurally at boot; the enemy and drone models are CC BY works from Sketchfab, credited in the repository README. Both games are in one public repository: <a href="https://github.com/Rassl/age-of-vibecoders" rel="noopener">github.com/Rassl/age-of-vibecoders</a>.</p>
+
+  <h2>Who</h2>
+  <p>Built by Rasul, a developer publishing as <a href="https://github.com/Rassl" rel="noopener">Rassl</a> on GitHub. Questions, bug reports and ideas are welcome as <a href="https://github.com/Rassl/age-of-vibecoders/issues" rel="noopener">GitHub issues</a>.</p>
+
+  <p class="updated">See also the <a href="/privacy/">privacy note</a>.</p>
+</main>
+
+<nav class="bar" aria-label="Sections">
+  <div class="wrap">
+    <a href="/#games">Games</a>
+    <a href="/#visionpro">Vision Pro</a>
+    <a class="on" href="/about/">About</a>
+    <a class="ext" href="https://github.com/Rassl/age-of-vibecoders" rel="noopener">GitHub</a>
+  </div>
+</nav>
+</body>
+</html>

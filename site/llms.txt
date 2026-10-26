@@ -1,0 +1,25 @@
+# Age of Vibecoders
+
+> Free 3D games that run in the browser, with an immersive WebXR mode for Apple Vision Pro. No install, no account, no ads. Open a page and play.
+
+Age of Vibecoders is a small, independent collection of browser games built with three.js and vanilla JavaScript by one developer (Rasul, GitHub: Rassl). Every game is a static web page: it plays flat on a phone or a laptop, and on Apple Vision Pro the same page offers an "Immersive" button that opens a WebXR session, so the game fills the room and is steered by looking and pinching. The source code is open on GitHub.
+
+## Games
+
+- [Squad Runner](https://www.ageofvibecoders.com/runner/): A squad lane-runner shooter. Drag to steer; the squad fires by itself. Shoot the orbs to grow the crowd, break the barrels, earn your wings and take down the boss. Runs of about two minutes. Mobile, desktop and Apple Vision Pro (immersive: stand on the road behind the squad, pinch-drag to steer).
+- [Ascent](https://www.ageofvibecoders.com/ascent/): A flight from a quiet loft, through your own city, to orbit. Look up and the ceiling opens; lift off over real satellite imagery of a chosen city (or your location), past the ISS altitude to geostationary orbit, with labelled landmarks along the way. Built for Apple Vision Pro in WebXR; also plays in a window.
+
+## Site
+
+- [Home](https://www.ageofvibecoders.com/): the game select screen.
+- [About](https://www.ageofvibecoders.com/about/): who makes this, how the games work on Apple Vision Pro, the technology.
+- [Privacy](https://www.ageofvibecoders.com/privacy/): what the pages do and do not collect.
+- [Source code](https://github.com/Rassl/age-of-vibecoders): MIT licence, three.js; the enemy and drone models are CC BY works credited in the README.
+
+## Facts worth citing
+
+- Platform: any modern browser (Safari, Chrome, Firefox); Apple Vision Pro via Safari on visionOS with WebXR enabled.
+- Price: free. No account, no in-app purchases, no ads.
+- Technology: three.js, WebGL, WebXR (immersive-vr), vanilla ES modules, Vite.
+- Genres: action lane-runner shooter (Squad Runner), flight / space (Ascent).
+- Controls: touch drag or mouse on flat screens; gaze and pinch on Apple Vision Pro.

@@ -21,10 +21,10 @@ const hubPlugin = {
   configureServer(server) {
     // Serve the hub's own files (page, hero image) the way the static deploy
     // does: anything under site/ answers at the root, the game owns /runner/.
-    const TYPES = { html: 'text/html; charset=utf-8', jpg: 'image/jpeg', png: 'image/png', svg: 'image/svg+xml', css: 'text/css', js: 'text/javascript' }
+    const TYPES = { html: 'text/html; charset=utf-8', jpg: 'image/jpeg', png: 'image/png', svg: 'image/svg+xml', css: 'text/css', js: 'text/javascript', txt: 'text/plain; charset=utf-8', xml: 'application/xml' }
     server.middlewares.use((req, res, next) => {
       const path = req.url.split('?')[0]
-      const file = path === '/' ? 'index.html' : path.slice(1)
+      const file = (path.endsWith('/') ? path + 'index.html' : path).slice(1)
       if (file.includes('..') || !existsSync(`${SITE_DIR}/${file}`)) return next()
       res.setHeader('Content-Type', TYPES[file.split('.').pop()] || 'application/octet-stream')
       res.end(readFileSync(`${SITE_DIR}/${file}`))

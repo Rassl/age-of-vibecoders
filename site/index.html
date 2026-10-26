@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#070b14" />
 <title>Age of Vibecoders — free browser games, Apple Vision Pro ready</title>
-<meta name="description" content="Free 3D games that run in the browser and in immersive mode on Apple Vision Pro. Squad Runner, a lane-runner shooter, and Ascent, a flight from your room to orbit. No install, no account." />
+<meta name="description" content="Free 3D games in the browser, immersive on Apple Vision Pro: Squad Runner, a lane-runner shooter, and Ascent, a flight from your room to orbit. No install." />
 <meta name="keywords" content="browser games, free games, Apple Vision Pro games, visionOS games, WebXR games, immersive web games, three.js games, Squad Runner, Ascent" />
 <link rel="canonical" href="https://www.ageofvibecoders.com/" />
 <meta property="og:type" content="website" />
@@ -26,10 +26,30 @@
   "@context": "https://schema.org",
   "@graph": [
     {
+      "@type": "Organization",
+      "@id": "https://www.ageofvibecoders.com/#org",
+      "name": "Age of Vibecoders",
+      "url": "https://www.ageofvibecoders.com/",
+      "logo": "https://www.ageofvibecoders.com/runner/og.png",
+      "sameAs": ["https://github.com/Rassl/age-of-vibecoders"],
+      "founder": { "@id": "https://www.ageofvibecoders.com/#author" }
+    },
+    {
+      "@type": "Person",
+      "@id": "https://www.ageofvibecoders.com/#author",
+      "name": "Rasul",
+      "alternateName": "Rassl",
+      "url": "https://github.com/Rassl",
+      "sameAs": ["https://github.com/Rassl"],
+      "jobTitle": "Developer"
+    },
+    {
       "@type": "WebSite",
       "name": "Age of Vibecoders",
       "url": "https://www.ageofvibecoders.com/",
-      "description": "Free 3D games that run in the browser and in immersive mode on Apple Vision Pro."
+      "description": "Free 3D games that run in the browser and in immersive mode on Apple Vision Pro.",
+      "publisher": { "@id": "https://www.ageofvibecoders.com/#org" },
+      "author": { "@id": "https://www.ageofvibecoders.com/#author" }
     },
     {
       "@type": "ItemList",
@@ -48,7 +68,9 @@
             "applicationCategory": "Game",
             "operatingSystem": "Web browser, visionOS",
             "gamePlatform": ["Web browser", "Apple Vision Pro"],
-            "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+            "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+            "author": { "@id": "https://www.ageofvibecoders.com/#author" },
+            "publisher": { "@id": "https://www.ageofvibecoders.com/#org" }
           }
         },
         {
@@ -64,7 +86,9 @@
             "applicationCategory": "Game",
             "operatingSystem": "Web browser, visionOS",
             "gamePlatform": ["Apple Vision Pro", "Web browser"],
-            "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+            "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+            "author": { "@id": "https://www.ageofvibecoders.com/#author" },
+            "publisher": { "@id": "https://www.ageofvibecoders.com/#org" }
           }
         }
       ]
@@ -125,6 +149,11 @@
   /* ---- Games deck ---- */
   main { padding: 36px 0 150px; }
   h1 { font-family: var(--head); font-weight: 400; font-size: clamp(30px, 4.4vw, 56px); letter-spacing: .22em; text-transform: uppercase; margin: 0 0 22px; color: #dbe6f5; text-shadow: 0 0 30px rgba(63, 216, 255, .25); }
+  .intro { margin: -8px 0 26px; max-width: 72ch; color: var(--muted); font-size: 15px; }
+  .intro b { color: #fff; }
+  .intro a { color: var(--cyan); }
+  .foot { margin-top: 36px; font-size: 13px; letter-spacing: .08em; color: var(--faint); }
+  .foot a { color: var(--muted); } .foot a:hover { color: var(--cyan); }
   .deck { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 22px; }
   .slot { position: relative; display: block; padding-bottom: 30px; outline: none; }
   .card { position: relative; aspect-ratio: 2 / 3; overflow: hidden;
@@ -223,6 +252,7 @@
 <main class="wrap">
   <section id="games">
     <h1>Games</h1>
+    <p class="intro">Two free 3D games built with three.js, each a plain web page: play flat on a phone or a laptop, or choose <b>Immersive</b> on Apple Vision Pro and play in the room. No install, no account, no ads. <a href="/about/">About this site →</a></p>
     <div class="deck">
       <a class="slot" href="/runner/">
         <div class="card">
@@ -274,12 +304,15 @@
       </ul>
     </div>
   </section>
+
+  <footer class="foot">Made by <a href="https://github.com/Rassl" rel="noopener">Rasul</a> · <a href="/about/">About</a> · <a href="/privacy/">Privacy</a> · <a href="https://github.com/Rassl/age-of-vibecoders" rel="noopener">Source</a></footer>
 </main>
 
 <nav class="bar" aria-label="Sections">
   <div class="wrap">
     <a class="on" href="#games">Games</a>
     <a href="#visionpro">Vision Pro</a>
+    <a href="/about/">About</a>
     <a class="ext" href="https://github.com/Rassl/age-of-vibecoders" rel="noopener">GitHub</a>
   </div>
 </nav>
